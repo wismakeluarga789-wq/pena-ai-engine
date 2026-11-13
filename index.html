@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PENA AI - Studio Novel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>✒ PENA AI</h1>
+    <p>Studio novel pribadi</p>
+  </header>
+
+  <main>
+    <section id="authSection" class="panel">
+      <h2>Selamat Datang</h2>
+      <p>Masuk atau daftar untuk mulai menulis.</p>
+
+      <input id="email" type="email" placeholder="Email Anda">
+      <input id="password" type="password" placeholder="Password">
+
+      <button id="loginBtn">Masuk</button>
+      <button id="signupBtn" class="secondary">Daftar Akun</button>
+      <p id="authMessage"></p>
+    </section>
+
+    <section id="studioSection" class="panel" hidden>
+      <div class="topbar">
+        <h2>Studio Penulisan</h2>
+        <button id="logoutBtn" class="secondary">Keluar</button>
+      </div>
+
+      <input id="title" placeholder="Judul tulisan">
+      <textarea id="prompt" rows="7"
+        placeholder="Ceritakan ide novel atau tulisan yang ingin dibuat..."></textarea>
+
+      <button id="writeBtn">✨ Buat Tulisan dengan AI</button>
+      <p id="writeMessage"></p>
+
+      <h3>Hasil Tulisan</h3>
+      <div id="result" class="result">Hasil tulisan akan muncul di sini.</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
