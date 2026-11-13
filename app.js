@@ -6,7 +6,8 @@ const SUPABASE_URL = "https://qyeiwnwekqwhxwwbwyfq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_fjFOriVPPgI6_pFhIAurCw_jNwuX_kj";
 
 // 2. ALAMAT CLOUDFLARE WORKER
-const WORKER_URL = "MASUKKAN_URL_WORKER";
+const WORKER_URL = "pena-ai-backend.wismakeluarga789.workers.dev
+";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
