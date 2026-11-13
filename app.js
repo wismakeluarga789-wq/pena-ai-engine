@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // 1. KONFIGURASI SUPABASE
 const SUPABASE_URL = "https://qyeiwnwekqwhxwwbwyfq.supabase.co";
-const SUPABASE_KEY = "MASUKKAN_PUBLISHABLE_KEY_SUPABASE";
+const SUPABASE_KEY = "sb_publishable_fjFOriVPPgI6_pFhIAurCw_jNwuX_kj";
 
 // 2. ALAMAT CLOUDFLARE WORKER
 const WORKER_URL = "MASUKKAN_URL_WORKER";
