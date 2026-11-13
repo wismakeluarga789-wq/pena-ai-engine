@@ -1,0 +1,91 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: #f8fafc;
+}
+
+header {
+  text-align: center;
+  padding: 35px 15px;
+  background: #172554;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 30px;
+}
+
+header p {
+  color: #bfdbfe;
+}
+
+main {
+  width: 100%;
+  max-width: 750px;
+  margin: 30px auto;
+  padding: 15px;
+}
+
+.panel {
+  background: #1e293b;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px #0005;
+}
+
+input, textarea {
+  display: block;
+  width: 100%;
+  margin: 15px 0;
+  padding: 14px;
+  border: 1px solid #475569;
+  border-radius: 9px;
+  background: #0f172a;
+  color: white;
+  font-size: 15px;
+}
+
+button {
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  margin: 5px 3px;
+}
+
+button.secondary {
+  background: #475569;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.result {
+  background: #0f172a;
+  border: 1px solid #475569;
+  padding: 18px;
+  border-radius: 10px;
+  min-height: 120px;
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+#authMessage, #writeMessage {
+  color: #fbbf24;
+}
