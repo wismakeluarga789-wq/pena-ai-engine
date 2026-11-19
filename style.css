@@ -209,3 +209,44 @@ textarea{resize:vertical;line-height:1.7}select{appearance:auto}
 }
 
 .quick-art{display:none}
+
+/* GLAMOUR VISUAL - MODE CERITA */
+.mode-card{
+  position:relative;
+  overflow:hidden;
+  min-height:210px;
+  background-image:
+    linear-gradient(90deg,rgba(25,12,32,.98) 0%,rgba(25,12,32,.83) 48%,rgba(25,12,32,.12) 100%),
+    url("/assets/npc-romantic.jpg") !important;
+  background-position:center, 70% center;
+  background-size:cover;
+}
+
+/* GLAMOUR VISUAL - YOUR LIBRARY */
+.library-card{
+  position:relative;
+  overflow:hidden;
+  min-height:190px;
+  background-image:
+    linear-gradient(90deg,rgba(30,14,39,.98) 0%,rgba(30,14,39,.85) 48%,rgba(30,14,39,.12) 100%),
+    url("/assets/npc-elegant.jpg") !important;
+  background-position:center, 70% center;
+  background-size:cover;
+}
+
+/* FOTO LEBIH TAJAM DAN TIDAK TERDISTORSI */
+.inspiration-card img,
+.npc-card img{
+  image-rendering:auto;
+  object-fit:cover;
+  object-position:center 30%;
+}
+
+/* MOBILE */
+@media(max-width:760px){
+  .mode-card,.library-card{
+    min-height:200px;
+    background-position:center, 72% center;
+  }
+}
+
