@@ -1,599 +1,302 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>PENA AI — Novel Studio</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#100b18">
+  <title>PENA AI — Premium Novel Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="app">
 
-  <!-- ============================= -->
-  <!-- HEADER -->
-  <!-- ============================= -->
-
   <header class="topbar">
-
-    <div>
-      <h1>PENA AI</h1>
-      <p>Novel Studio</p>
+    <a class="brand" href="#" aria-label="PENA AI">
+      <span class="brand-mark">P</span>
+      <span>
+        <strong>PENA AI</strong>
+        <small>PREMIUM NOVEL STUDIO</small>
+      </span>
+    </a>
+    <div class="topbar-right">
+      <span class="online-status"><i></i> AI STUDIO ONLINE</span>
+      <button id="logoutBtn" class="logout-btn">Keluar ↗</button>
     </div>
-
-    <button id="logoutBtn">
-      Keluar
-    </button>
-
   </header>
 
-
-  <!-- ============================= -->
-  <!-- LOGIN -->
-  <!-- ============================= -->
-
-  <section id="authSection" class="card">
-
-    <h2>Masuk ke PENA AI</h2>
-
-    <input
-      id="email"
-      type="email"
-      placeholder="Email"
-    >
-
-    <input
-      id="password"
-      type="password"
-      placeholder="Password"
-    >
-
-    <div class="button-row">
-
-      <button id="loginBtn">
-        Masuk
-      </button>
-
-      <button id="signupBtn">
-        Daftar
-      </button>
-
+  <section id="authSection" class="auth-wrap">
+    <div class="auth-art">
+      <div class="auth-art-overlay"></div>
+      <div class="auth-art-copy">
+        <span class="eyebrow">YOUR STORY. YOUR UNIVERSE.</span>
+        <h1>Setiap cerita<br>punya <em>kehidupan.</em></h1>
+        <p>Bangun dunia, ciptakan karakter, dan biarkan imajinasimu berjalan lebih jauh.</p>
+      </div>
     </div>
-
-    <p id="authMessage"></p>
-
+    <div class="auth-panel">
+      <div class="auth-logo">PENA<span>AI</span></div>
+      <h2>Selamat datang kembali</h2>
+      <p class="muted">Masuk ke ruang kreatif pribadimu.</p>
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="Masukkan email">
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Masukkan password">
+      <div class="button-row">
+        <button id="loginBtn" class="primary-btn">Masuk ke Studio</button>
+        <button id="signupBtn" class="outline-btn">Daftar</button>
+      </div>
+      <p id="authMessage" class="message"></p>
+      <p class="auth-foot">PRIVATE CREATIVE SPACE · PENA AI</p>
+    </div>
   </section>
-
-
-  <!-- ============================= -->
-  <!-- STUDIO -->
-  <!-- ============================= -->
 
   <section id="studioSection" hidden>
 
-    <!-- =========================== -->
-    <!-- MENU -->
-    <!-- =========================== -->
-
-    <nav class="menu">
-
-      <button
-        class="menuBtn active"
-        data-page="homePage">
-        Beranda
-      </button>
-
-      <button
-        class="menuBtn"
-        data-page="novelPage">
-        Novel Saya
-      </button>
-
-      <button
-        class="menuBtn"
-        data-page="writePage">
-        Tulis Cepat
-      </button>
-
-    </nav>
-
-
-    <!-- =========================== -->
-    <!-- BERANDA -->
-    <!-- =========================== -->
-
-    <section
-      id="homePage"
-      class="page">
-
-      <div class="hero card">
-
-        <h2>Selamat datang di PENA AI</h2>
-
-        <p>
-          Tempat membuat cerita,
-          mengembangkan novel,
-          dan melanjutkan bab
-          dengan bantuan AI.
-        </p>
-
-        <button id="newNovelFromHome">
-          + Buat Novel Baru
-        </button>
-
+    <aside class="sidebar">
+      <div class="side-label">WORKSPACE</div>
+      <nav class="menu">
+        <button class="menuBtn active" data-page="homePage"><span>◈</span> Beranda</button>
+        <button class="menuBtn" data-page="novelPage"><span>▤</span> Novel Saya</button>
+        <button class="menuBtn" data-page="writePage"><span>✎</span> Tulis Cepat</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="side-glow"></div>
+        <span class="eyebrow">CREATIVE MODE</span>
+        <strong>Unleash your imagination.</strong>
+        <small>Tempat semua cerita dimulai.</small>
       </div>
+      <div class="side-version">PENA AI · PREMIUM STUDIO</div>
+    </aside>
 
+    <main class="main-content">
 
-      <div class="grid">
-
-        <div class="stat card">
-
-          <strong id="totalNovel">
-            0
-          </strong>
-
-          <span>
-            Novel
-          </span>
-
+      <section id="homePage" class="page">
+        <div class="welcome-row">
+          <div>
+            <span class="eyebrow">YOUR PERSONAL WRITING SPACE</span>
+            <h1>Selamat datang di <em>PENA AI</em></h1>
+            <p class="muted">Ruang untuk membangun cerita yang tidak biasa.</p>
+          </div>
+          <div class="date-chip">✦ NOVEL STUDIO</div>
         </div>
 
-        <div class="stat card">
-
-          <strong id="totalBab">
-            0
-          </strong>
-
-          <span>
-            Bab
-          </span>
-
+        <div class="hero card">
+          <div class="hero-content">
+            <span class="hero-tag">✦ THE ART OF STORYTELLING</span>
+            <h2>Ciptakan dunia<br>yang <em>hidup.</em></h2>
+            <p>Tulis novel, bangun karakter, dan kembangkan alur cerita bersama asisten AI pribadimu.</p>
+            <button id="newNovelFromHome" class="primary-btn">＋ Mulai Novel Baru</button>
+          </div>
+          <div class="hero-caption">
+            <span>IMAGINATION HAS NO BOUNDARIES</span>
+            <span>01 / CREATE</span>
+          </div>
         </div>
 
-      </div>
-
-    </section>
-
-
-    <!-- =========================== -->
-    <!-- NOVEL SAYA -->
-    <!-- =========================== -->
-
-    <section
-      id="novelPage"
-      class="page"
-      hidden>
-
-      <div class="section-head">
-
-        <div>
-
-          <h2>Novel Saya</h2>
-
-          <p>
-            Kelola novel dan lanjutkan cerita.
-          </p>
-
+        <div class="stats-grid">
+          <div class="stat card">
+            <div class="stat-icon">▤</div>
+            <span>Total Novel</span>
+            <strong id="totalNovel">0</strong>
+            <small>Koleksi cerita milikmu</small>
+          </div>
+          <div class="stat card">
+            <div class="stat-icon">✎</div>
+            <span>Total Bab</span>
+            <strong id="totalBab">0</strong>
+            <small>Bab yang telah dibuat</small>
+          </div>
+          <div class="stat card stat-accent">
+            <div class="stat-icon">✦</div>
+            <span>Creative Studio</span>
+            <strong>AI</strong>
+            <small>Siap membantu ceritamu</small>
+          </div>
         </div>
 
-        <button id="newNovelBtn">
-          + Novel Baru
-        </button>
-
-      </div>
-
-
-      <div id="novelList">
-
-      </div>
-
-    </section>
-
-
-    <!-- =========================== -->
-    <!-- DETAIL NOVEL -->
-    <!-- =========================== -->
-
-    <section
-      id="detailPage"
-      class="page"
-      hidden>
-
-      <button
-        id="backToNovels"
-        class="secondary">
-        ← Kembali
-      </button>
-
-
-      <div class="card novel-header">
-
-        <h2 id="detailTitle">
-          -
-        </h2>
-
-        <p id="detailInfo">
-          -
-        </p>
-
-        <p id="detailPremise">
-          -
-        </p>
-
-      </div>
-
-
-      <!-- ========================= -->
-      <!-- TAB NOVEL -->
-      <!-- ========================= -->
-
-      <div class="subnav">
-
-        <button
-          class="detailTab active"
-          data-detail="chapterSection">
-          Bab
-        </button>
-
-        <button
-          class="detailTab"
-          data-detail="characterSection">
-          Karakter
-        </button>
-
-        <button
-          class="detailTab"
-          data-detail="styleSection">
-          Gaya
-        </button>
-
-      </div>
-
-
-      <!-- ========================= -->
-      <!-- BAB -->
-      <!-- ========================= -->
-
-      <section
-        id="chapterSection"
-        class="detailContent">
-
-        <div class="card">
-
-          <h3>
-            Tulis Bab Berikutnya
-          </h3>
-
-          <p>
-            AI akan membaca cerita
-            sebelumnya dan melanjutkan
-            alurnya.
-          </p>
-
-          <button id="writeNextChapter">
-            ✍️ Tulis Bab Berikutnya
-          </button>
-
-          <p id="chapterMessage"></p>
-
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">CHARACTER INSPIRATION</span>
+            <h2>Inspirasi karakter</h2>
+            <p class="muted">Referensi visual untuk membangun tokoh-tokoh dalam novelmu.</p>
+          </div>
         </div>
 
-
-        <div
-          id="chapterList">
+        <div class="inspiration-grid">
+          <article class="inspiration-card">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=85" alt="Potret perempuan dewasa bergaya editorial">
+            <div class="inspiration-overlay">
+              <span>01 · ELEGANT</span>
+              <h3>The Elegant One</h3>
+              <p>Anggun · Percaya diri · Misterius</p>
+            </div>
+          </article>
+          <article class="inspiration-card">
+            <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=700&q=85" alt="Potret karakter perempuan dewasa">
+            <div class="inspiration-overlay">
+              <span>02 · ROMANTIC</span>
+              <h3>The Romantic Soul</h3>
+              <p>Hangat · Berani · Penuh rahasia</p>
+            </div>
+          </article>
+          <article class="inspiration-card">
+            <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=700&q=85" alt="Potret fashion perempuan dewasa">
+            <div class="inspiration-overlay">
+              <span>03 · BOLD</span>
+              <h3>The Fearless One</h3>
+              <p>Tegas · Karismatik · Independen</p>
+            </div>
+          </article>
         </div>
-
+        <p class="visual-note">Gambar inspirasi ini bersifat dekoratif. Karakter novel yang sebenarnya dikelola melalui menu Karakter.</p>
       </section>
 
-
-      <!-- ========================= -->
-      <!-- KARAKTER -->
-      <!-- ========================= -->
-
-      <section
-        id="characterSection"
-        class="detailContent"
-        hidden>
-
-        <div class="card">
-
-          <h3>
-            Tambah Karakter
-          </h3>
-
-          <input
-            id="charName"
-            placeholder="Nama karakter"
-          >
-
-          <input
-            id="charAge"
-            type="number"
-            placeholder="Umur"
-          >
-
-          <input
-            id="charRole"
-            placeholder="Peran"
-          >
-
-          <textarea
-            id="charTrait"
-            placeholder="Sifat dan karakter">
-          </textarea>
-
-          <textarea
-            id="charBackground"
-            placeholder="Latar belakang">
-          </textarea>
-
-          <button id="addCharacterBtn">
-            + Simpan Karakter
-          </button>
-
-          <p id="characterMessage"></p>
-
+      <section id="novelPage" class="page" hidden>
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">YOUR LIBRARY</span>
+            <h1>Novel Saya</h1>
+            <p class="muted">Semua dunia cerita yang sedang kamu bangun.</p>
+          </div>
+          <button id="newNovelBtn" class="primary-btn">＋ Novel Baru</button>
         </div>
-
-
-        <div
-          id="characterList">
-        </div>
-
+        <div id="novelList" class="novel-list"></div>
       </section>
 
+      <section id="detailPage" class="page" hidden>
+        <button id="backToNovels" class="back-btn">← Kembali ke Novel Saya</button>
 
-      <!-- ========================= -->
-      <!-- GAYA -->
-      <!-- ========================= -->
-
-      <section
-        id="styleSection"
-        class="detailContent"
-        hidden>
-
-        <div class="card">
-
-          <h3>
-            Gaya Penulisan
-          </h3>
-
-          <label>
-            Genre
-          </label>
-
-          <select id="styleGenre">
-
-            <option>
-              Drama
-            </option>
-
-            <option>
-              Romansa
-            </option>
-
-            <option>
-              Thriller
-            </option>
-
-            <option>
-              Misteri
-            </option>
-
-            <option>
-              Horor
-            </option>
-
-            <option>
-              Fantasi
-            </option>
-
-            <option>
-              Action
-            </option>
-
-            <option>
-              Komedi
-            </option>
-
-            <option>
-              Slice of Life
-            </option>
-
-            <option>
-              Psychological
-            </option>
-
-          </select>
-
-
-          <label>
-            Gaya Narasi
-          </label>
-
-          <select id="styleWriting">
-
-            <option>
-              Natural
-            </option>
-
-            <option>
-              Sinematik
-            </option>
-
-            <option>
-              Puitis
-            </option>
-
-            <option>
-              Emosional
-            </option>
-
-            <option>
-              Intens
-            </option>
-
-            <option>
-              Ringan
-            </option>
-
-            <option>
-              Gelap
-            </option>
-
-            <option>
-              Detail
-            </option>
-
-          </select>
-
-
-          <label>
-            Nuansa
-          </label>
-
-          <select id="styleMood">
-
-            <option>
-              Emosional
-            </option>
-
-            <option>
-              Hangat
-            </option>
-
-            <option>
-              Tegang
-            </option>
-
-            <option>
-              Misterius
-            </option>
-
-            <option>
-              Gelap
-            </option>
-
-            <option>
-              Romantis
-            </option>
-
-          </select>
-
-
-          <label>
-            Mode
-          </label>
-
-          <select id="styleMode">
-
-            <option value="Normal">
-              Normal
-            </option>
-
-            <option value="Dewasa 18+">
-              Dewasa 18+
-            </option>
-
-          </select>
-
-
-          <button id="saveStyleBtn">
-            Simpan Gaya
-          </button>
-
-          <p id="styleMessage"></p>
-
+        <div class="card novel-header">
+          <span class="eyebrow">NOVEL WORKSPACE</span>
+          <h1 id="detailTitle">-</h1>
+          <p id="detailInfo">-</p>
+          <p id="detailPremise">-</p>
         </div>
 
+        <div class="subnav">
+          <button class="detailTab active" data-detail="chapterSection">▤ Bab</button>
+          <button class="detailTab" data-detail="characterSection">♙ Karakter</button>
+          <button class="detailTab" data-detail="styleSection">✦ Gaya</button>
+        </div>
+
+        <section id="chapterSection" class="detailContent">
+          <div class="card chapter-cta">
+            <div>
+              <span class="eyebrow">CONTINUE YOUR STORY</span>
+              <h2>Tulis bab berikutnya</h2>
+              <p class="muted">AI membaca konteks cerita dan melanjutkan alurnya.</p>
+            </div>
+            <button id="writeNextChapter" class="primary-btn">✍ Tulis Bab Berikutnya</button>
+            <p id="chapterMessage" class="message"></p>
+          </div>
+          <div id="chapterList" class="chapter-list"></div>
+        </section>
+
+        <section id="characterSection" class="detailContent" hidden>
+          <div class="card">
+            <span class="eyebrow">CHARACTER BUILDER</span>
+            <h2>Ciptakan karakter</h2>
+            <p class="muted">Tokoh yang kuat membuat cerita terasa hidup.</p>
+            <label for="charName">Nama karakter</label>
+            <input id="charName" placeholder="Nama karakter">
+            <label for="charAge">Umur</label>
+            <input id="charAge" type="number" min="18" placeholder="Umur karakter">
+            <label for="charRole">Peran dalam cerita</label>
+            <input id="charRole" placeholder="Contoh: tokoh utama, sahabat, antagonis">
+            <label for="charTrait">Sifat dan karakter</label>
+            <textarea id="charTrait" placeholder="Jelaskan sifat, kebiasaan, dan kepribadiannya"></textarea>
+            <label for="charBackground">Latar belakang</label>
+            <textarea id="charBackground" placeholder="Ceritakan masa lalu dan latar belakangnya"></textarea>
+            <button id="addCharacterBtn" class="primary-btn">＋ Simpan Karakter</button>
+            <p id="characterMessage" class="message"></p>
+          </div>
+          <div id="characterList" class="character-list"></div>
+        </section>
+
+        <section id="styleSection" class="detailContent" hidden>
+          <div class="card">
+            <span class="eyebrow">WRITING PERSONALITY</span>
+            <h2>Atur gaya penulisan</h2>
+            <p class="muted">Tentukan karakter bahasa dan suasana novelmu.</p>
+
+            <label for="styleGenre">Genre</label>
+            <select id="styleGenre">
+              <option>Drama</option><option>Romansa</option><option>Thriller</option>
+              <option>Misteri</option><option>Horor</option><option>Fantasi</option>
+              <option>Action</option><option>Komedi</option><option>Slice of Life</option>
+              <option>Psychological</option>
+            </select>
+
+            <label for="styleWriting">Gaya Narasi</label>
+            <select id="styleWriting">
+              <option>Natural</option><option>Sinematik</option><option>Puitis</option>
+              <option>Emosional</option><option>Intens</option><option>Ringan</option>
+              <option>Gelap</option><option>Detail</option>
+            </select>
+
+            <label for="styleMood">Nuansa</label>
+            <select id="styleMood">
+              <option>Emosional</option><option>Hangat</option><option>Tegang</option>
+              <option>Misterius</option><option>Gelap</option><option>Romantis</option>
+            </select>
+
+            <label for="styleMode">Mode Penulisan</label>
+            <select id="styleMode">
+              <option value="Normal">Normal</option>
+              <option value="Dewasa 18+">Dewasa 18+</option>
+            </select>
+            <p class="field-hint">Mode Dewasa 18+ ditujukan untuk tema dan romansa dewasa dengan karakter yang sudah dewasa.</p>
+
+            <button id="saveStyleBtn" class="primary-btn">Simpan Gaya</button>
+            <p id="styleMessage" class="message"></p>
+          </div>
+        </section>
       </section>
 
-    </section>
-
-
-    <!-- ============================= -->
-    <!-- TULIS CEPAT -->
-    <!-- ============================= -->
-
-    <section
-      id="writePage"
-      class="page"
-      hidden>
-
-      <div class="card">
-
-        <h2>
-          Tulis Cepat
-        </h2>
-
-        <p>
-          Untuk ide cerita yang belum
-          ingin dimasukkan ke sebuah novel.
-        </p>
-
-
-        <input
-          id="title"
-          placeholder="Judul tulisan"
-        >
-
-
-        <textarea
-          id="prompt"
-          rows="10"
-          placeholder="Tulis ide cerita di sini...">
-        </textarea>
-
-
-        <button id="writeBtn">
-          ✍️ Tulis dengan PENA AI
-        </button>
-
-
-        <p id="writeMessage"></p>
-
-      </div>
-
-
-      <div class="card result-card">
-
-        <div class="result-head">
-
-          <h2>
-            Hasil Tulisan
-          </h2>
-
-          <button
-            id="copyResult"
-            class="secondary">
-            Salin
-          </button>
-
+      <section id="writePage" class="page" hidden>
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">QUICK WRITING</span>
+            <h1>Tulis Cepat</h1>
+            <p class="muted">Mulai dari satu ide, lalu kembangkan menjadi cerita.</p>
+          </div>
         </div>
 
-
-        <div
-          id="result"
-          class="result">
+        <div class="card writing-card">
+          <label for="title">Judul tulisan</label>
+          <input id="title" placeholder="Beri judul untuk ceritamu">
+          <label for="prompt">Ide cerita</label>
+          <textarea id="prompt" rows="10" placeholder="Tuliskan ide, adegan, tokoh, atau situasi yang ingin kamu kembangkan..."></textarea>
+          <button id="writeBtn" class="primary-btn">✍ Tulis dengan PENA AI</button>
+          <p id="writeMessage" class="message"></p>
         </div>
 
-      </div>
+        <div class="card result-card">
+          <div class="result-head">
+            <div>
+              <span class="eyebrow">YOUR CREATION</span>
+              <h2>Hasil tulisan</h2>
+            </div>
+            <button id="copyResult" class="outline-btn">Salin teks</button>
+          </div>
+          <div id="result" class="result"></div>
+        </div>
+      </section>
 
-    </section>
+      <footer class="main-footer">
+        <span>PENA AI · PREMIUM NOVEL STUDIO</span>
+        <span>CREATE YOUR OWN UNIVERSE ✦</span>
+      </footer>
 
+    </main>
   </section>
-
 </div>
 
-
 <script type="module" src="app.js"></script>
-
 </body>
 </html>
