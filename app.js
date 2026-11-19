@@ -94,7 +94,7 @@ el("writeBtn").onclick = async () => {
       throw new Error(result.error || "Gagal membuat tulisan.");
     }
 
-    el("result").textContent = result.text;
+    el("result").textContent = result.text.replace(/\*\*/g, "");
     el("writeMessage").textContent = "Tulisan berhasil dibuat dan disimpan.";
 
   } catch (error) {
