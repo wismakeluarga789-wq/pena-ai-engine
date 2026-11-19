@@ -2,47 +2,598 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PENA AI - Studio Novel</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>PENA AI — Novel Studio</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <header>
-    <h1>✒ PENA AI</h1>
-    <p>Studio novel pribadi</p>
+
+<div class="app">
+
+  <!-- ============================= -->
+  <!-- HEADER -->
+  <!-- ============================= -->
+
+  <header class="topbar">
+
+    <div>
+      <h1>PENA AI</h1>
+      <p>Novel Studio</p>
+    </div>
+
+    <button id="logoutBtn">
+      Keluar
+    </button>
+
   </header>
 
-  <main>
-    <section id="authSection" class="panel">
-      <h2>Selamat Datang</h2>
-      <p>Masuk atau daftar untuk mulai menulis.</p>
 
-      <input id="email" type="email" placeholder="Email Anda">
-      <input id="password" type="password" placeholder="Password">
+  <!-- ============================= -->
+  <!-- LOGIN -->
+  <!-- ============================= -->
 
-      <button id="loginBtn">Masuk</button>
-      <button id="signupBtn" class="secondary">Daftar Akun</button>
-      <p id="authMessage"></p>
-    </section>
+  <section id="authSection" class="card">
 
-    <section id="studioSection" class="panel" hidden>
-      <div class="topbar">
-        <h2>Studio Penulisan</h2>
-        <button id="logoutBtn" class="secondary">Keluar</button>
+    <h2>Masuk ke PENA AI</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="Email"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+    >
+
+    <div class="button-row">
+
+      <button id="loginBtn">
+        Masuk
+      </button>
+
+      <button id="signupBtn">
+        Daftar
+      </button>
+
+    </div>
+
+    <p id="authMessage"></p>
+
+  </section>
+
+
+  <!-- ============================= -->
+  <!-- STUDIO -->
+  <!-- ============================= -->
+
+  <section id="studioSection" hidden>
+
+    <!-- =========================== -->
+    <!-- MENU -->
+    <!-- =========================== -->
+
+    <nav class="menu">
+
+      <button
+        class="menuBtn active"
+        data-page="homePage">
+        Beranda
+      </button>
+
+      <button
+        class="menuBtn"
+        data-page="novelPage">
+        Novel Saya
+      </button>
+
+      <button
+        class="menuBtn"
+        data-page="writePage">
+        Tulis Cepat
+      </button>
+
+    </nav>
+
+
+    <!-- =========================== -->
+    <!-- BERANDA -->
+    <!-- =========================== -->
+
+    <section
+      id="homePage"
+      class="page">
+
+      <div class="hero card">
+
+        <h2>Selamat datang di PENA AI</h2>
+
+        <p>
+          Tempat membuat cerita,
+          mengembangkan novel,
+          dan melanjutkan bab
+          dengan bantuan AI.
+        </p>
+
+        <button id="newNovelFromHome">
+          + Buat Novel Baru
+        </button>
+
       </div>
 
-      <input id="title" placeholder="Judul tulisan">
-      <textarea id="prompt" rows="7"
-        placeholder="Ceritakan ide novel atau tulisan yang ingin dibuat..."></textarea>
 
-      <button id="writeBtn">✨ Buat Tulisan dengan AI</button>
-      <p id="writeMessage"></p>
+      <div class="grid">
 
-      <h3>Hasil Tulisan</h3>
-      <div id="result" class="result">Hasil tulisan akan muncul di sini.</div>
+        <div class="stat card">
+
+          <strong id="totalNovel">
+            0
+          </strong>
+
+          <span>
+            Novel
+          </span>
+
+        </div>
+
+        <div class="stat card">
+
+          <strong id="totalBab">
+            0
+          </strong>
+
+          <span>
+            Bab
+          </span>
+
+        </div>
+
+      </div>
+
     </section>
-  </main>
 
-  <script type="module" src="app.js"></script>
+
+    <!-- =========================== -->
+    <!-- NOVEL SAYA -->
+    <!-- =========================== -->
+
+    <section
+      id="novelPage"
+      class="page"
+      hidden>
+
+      <div class="section-head">
+
+        <div>
+
+          <h2>Novel Saya</h2>
+
+          <p>
+            Kelola novel dan lanjutkan cerita.
+          </p>
+
+        </div>
+
+        <button id="newNovelBtn">
+          + Novel Baru
+        </button>
+
+      </div>
+
+
+      <div id="novelList">
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================== -->
+    <!-- DETAIL NOVEL -->
+    <!-- =========================== -->
+
+    <section
+      id="detailPage"
+      class="page"
+      hidden>
+
+      <button
+        id="backToNovels"
+        class="secondary">
+        ← Kembali
+      </button>
+
+
+      <div class="card novel-header">
+
+        <h2 id="detailTitle">
+          -
+        </h2>
+
+        <p id="detailInfo">
+          -
+        </p>
+
+        <p id="detailPremise">
+          -
+        </p>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- TAB NOVEL -->
+      <!-- ========================= -->
+
+      <div class="subnav">
+
+        <button
+          class="detailTab active"
+          data-detail="chapterSection">
+          Bab
+        </button>
+
+        <button
+          class="detailTab"
+          data-detail="characterSection">
+          Karakter
+        </button>
+
+        <button
+          class="detailTab"
+          data-detail="styleSection">
+          Gaya
+        </button>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- BAB -->
+      <!-- ========================= -->
+
+      <section
+        id="chapterSection"
+        class="detailContent">
+
+        <div class="card">
+
+          <h3>
+            Tulis Bab Berikutnya
+          </h3>
+
+          <p>
+            AI akan membaca cerita
+            sebelumnya dan melanjutkan
+            alurnya.
+          </p>
+
+          <button id="writeNextChapter">
+            ✍️ Tulis Bab Berikutnya
+          </button>
+
+          <p id="chapterMessage"></p>
+
+        </div>
+
+
+        <div
+          id="chapterList">
+        </div>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- KARAKTER -->
+      <!-- ========================= -->
+
+      <section
+        id="characterSection"
+        class="detailContent"
+        hidden>
+
+        <div class="card">
+
+          <h3>
+            Tambah Karakter
+          </h3>
+
+          <input
+            id="charName"
+            placeholder="Nama karakter"
+          >
+
+          <input
+            id="charAge"
+            type="number"
+            placeholder="Umur"
+          >
+
+          <input
+            id="charRole"
+            placeholder="Peran"
+          >
+
+          <textarea
+            id="charTrait"
+            placeholder="Sifat dan karakter">
+          </textarea>
+
+          <textarea
+            id="charBackground"
+            placeholder="Latar belakang">
+          </textarea>
+
+          <button id="addCharacterBtn">
+            + Simpan Karakter
+          </button>
+
+          <p id="characterMessage"></p>
+
+        </div>
+
+
+        <div
+          id="characterList">
+        </div>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- GAYA -->
+      <!-- ========================= -->
+
+      <section
+        id="styleSection"
+        class="detailContent"
+        hidden>
+
+        <div class="card">
+
+          <h3>
+            Gaya Penulisan
+          </h3>
+
+          <label>
+            Genre
+          </label>
+
+          <select id="styleGenre">
+
+            <option>
+              Drama
+            </option>
+
+            <option>
+              Romansa
+            </option>
+
+            <option>
+              Thriller
+            </option>
+
+            <option>
+              Misteri
+            </option>
+
+            <option>
+              Horor
+            </option>
+
+            <option>
+              Fantasi
+            </option>
+
+            <option>
+              Action
+            </option>
+
+            <option>
+              Komedi
+            </option>
+
+            <option>
+              Slice of Life
+            </option>
+
+            <option>
+              Psychological
+            </option>
+
+          </select>
+
+
+          <label>
+            Gaya Narasi
+          </label>
+
+          <select id="styleWriting">
+
+            <option>
+              Natural
+            </option>
+
+            <option>
+              Sinematik
+            </option>
+
+            <option>
+              Puitis
+            </option>
+
+            <option>
+              Emosional
+            </option>
+
+            <option>
+              Intens
+            </option>
+
+            <option>
+              Ringan
+            </option>
+
+            <option>
+              Gelap
+            </option>
+
+            <option>
+              Detail
+            </option>
+
+          </select>
+
+
+          <label>
+            Nuansa
+          </label>
+
+          <select id="styleMood">
+
+            <option>
+              Emosional
+            </option>
+
+            <option>
+              Hangat
+            </option>
+
+            <option>
+              Tegang
+            </option>
+
+            <option>
+              Misterius
+            </option>
+
+            <option>
+              Gelap
+            </option>
+
+            <option>
+              Romantis
+            </option>
+
+          </select>
+
+
+          <label>
+            Mode
+          </label>
+
+          <select id="styleMode">
+
+            <option value="Normal">
+              Normal
+            </option>
+
+            <option value="Dewasa 18+">
+              Dewasa 18+
+            </option>
+
+          </select>
+
+
+          <button id="saveStyleBtn">
+            Simpan Gaya
+          </button>
+
+          <p id="styleMessage"></p>
+
+        </div>
+
+      </section>
+
+    </section>
+
+
+    <!-- ============================= -->
+    <!-- TULIS CEPAT -->
+    <!-- ============================= -->
+
+    <section
+      id="writePage"
+      class="page"
+      hidden>
+
+      <div class="card">
+
+        <h2>
+          Tulis Cepat
+        </h2>
+
+        <p>
+          Untuk ide cerita yang belum
+          ingin dimasukkan ke sebuah novel.
+        </p>
+
+
+        <input
+          id="title"
+          placeholder="Judul tulisan"
+        >
+
+
+        <textarea
+          id="prompt"
+          rows="10"
+          placeholder="Tulis ide cerita di sini...">
+        </textarea>
+
+
+        <button id="writeBtn">
+          ✍️ Tulis dengan PENA AI
+        </button>
+
+
+        <p id="writeMessage"></p>
+
+      </div>
+
+
+      <div class="card result-card">
+
+        <div class="result-head">
+
+          <h2>
+            Hasil Tulisan
+          </h2>
+
+          <button
+            id="copyResult"
+            class="secondary">
+            Salin
+          </button>
+
+        </div>
+
+
+        <div
+          id="result"
+          class="result">
+        </div>
+
+      </div>
+
+    </section>
+
+  </section>
+
+</div>
+
+
+<script type="module" src="app.js"></script>
+
 </body>
 </html>
