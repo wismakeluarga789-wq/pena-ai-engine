@@ -94,7 +94,17 @@ el("writeBtn").onclick = async () => {
       throw new Error(result.error || "Gagal membuat tulisan.");
     }
 
-    el("result").textContent = result.text.replace(/\*\*/g, "");
+    const cleanText = result.text
+  .replace(/\*\*(.*?)\*\*/g, "$1")
+  .replace(/^#{1,6}\s*/gm, "")
+  .replace(/^\s*\|.*\|\s*$/gm, "")
+  .replace(/^\s*\|?[-:]+[-| :]*\|?\s*$/gm, "")
+  .replace(/^\s*[-*]\s+/gm, "• ")
+  .replace(/^\s*\d+\.\s+/gm, "")
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
+
+el("result").textContent = cleanText;
     el("writeMessage").textContent = "Tulisan berhasil dibuat dan disimpan.";
 
   } catch (error) {
