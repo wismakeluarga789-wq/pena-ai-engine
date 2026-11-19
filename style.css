@@ -259,7 +259,7 @@ textarea{resize:vertical;line-height:1.7}select{appearance:auto}
       rgba(18, 8, 24, 0.96) 0%,
       rgba(18, 8, 24, 0.35) 100%
     ),
-    url("/assets/sidebar-glamour.jpg?v=2") center 35% / cover no-repeat !important;
+    url("/assets/sidebar-glamour.jpg.png?v=2") center 35% / cover no-repeat !important;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 18px;
 }
