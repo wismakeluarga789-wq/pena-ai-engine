@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // 1. KONFIGURASI SUPABASE
@@ -94,18 +93,19 @@ el("writeBtn").onclick = async () => {
       throw new Error(result.error || "Gagal membuat tulisan.");
     }
 
+    // Bersihkan tanda Markdown tanpa mengubah gaya tulisan
     const cleanText = result.text
-  .replace(/\*\*(.*?)\*\*/g, "$1")
-  .replace(/^#{1,6}\s*/gm, "")
-  .replace(/^\s*\|.*\|\s*$/gm, "")
-  .replace(/^\s*\|?[-:]+[-| :]*\|?\s*$/gm, "")
-  .replace(/^\s*[-*]\s+/gm, "• ")
-  .replace(/^\s*\d+\.\s+/gm, "")
-  .replace(/\n{3,}/g, "\n\n")
-  .trim();
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*/gm, "")
+      .replace(/^\s*`{1,3}\s*/gm, "")
+      .replace(/\s*`{1,3}\s*$/gm, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
 
-el("result").textContent = cleanText;
-    el("writeMessage").textContent = "Tulisan berhasil dibuat dan disimpan.";
+    el("result").textContent = cleanText;
+
+    el("writeMessage").textContent =
+      "Tulisan berhasil dibuat dan disimpan.";
 
   } catch (error) {
     el("writeMessage").textContent = error.message;
