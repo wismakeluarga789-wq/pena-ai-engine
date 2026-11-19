@@ -56,8 +56,8 @@ em{color:var(--pink2);font-style:normal}
 .hero{min-height:380px;padding:40px;position:relative;display:flex;align-items:center;overflow:hidden;border-color:#df60b34f;background-image:
 linear-gradient(90deg,rgba(15,7,19,.97) 0%,rgba(19,9,24,.88) 36%,rgba(20,8,24,.18) 100%),
 linear-gradient(0deg,rgba(13,6,17,.56),transparent 60%),
-url("https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1800&q=90");
-background-position:center,center,65% 35%;background-size:cover}
+url("assets/hero-glamour.png");
+background-position:center,center,center 38%;background-size:cover}
 .hero-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 48%,#f044a714)}
 .hero-content{position:relative;z-index:1;max-width:490px}
 .hero-tag{color:#ff9bd3;font-size:10px;font-weight:800;letter-spacing:2px}
@@ -103,7 +103,7 @@ background-position:center,center,65% 35%;background-size:cover}
 .npc-card h3{font:700 18px "Playfair Display",serif;margin:12px 0 5px}
 .npc-card .outline-btn{width:100%;padding:10px;font-size:11px}
 .bottom-actions{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:17px}
-.quick-card{position:relative;overflow:hidden;min-height:190px;display:flex;align-items:center;background:linear-gradient(90deg,#26132e 0%,#26132eeb 45%,#25122d70 100%),url("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=85") center 32%/cover}
+.quick-card{position:relative;overflow:hidden;min-height:190px;display:flex;align-items:center;background:linear-gradient(90deg,#26132e 0%,#26132eeb 45%,#25122d70 100%),url("assets/hero-glamour.png") center 32%/cover}
 .quick-card>div:first-child{position:relative;z-index:1;max-width:350px}
 .quick-card p,.library-card p{font-size:12px;color:#c2acc7;line-height:1.7}
 .quick-card h2,.library-card h2{margin:8px 0}
@@ -136,7 +136,7 @@ textarea{resize:vertical;line-height:1.7}select{appearance:auto}
 
 /* LOGIN */
 #authSection:not([hidden]){max-width:1120px;min-height:650px;margin:45px auto;padding:16px;display:grid;grid-template-columns:1.15fr .85fr;border:1px solid var(--line);border-radius:24px;background:#1b1022;box-shadow:0 25px 80px #0007}
-.auth-art{min-height:610px;position:relative;border-radius:17px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:28px 36px 40px;background-image:linear-gradient(0deg,rgba(15,7,20,.96),rgba(15,7,20,.08) 90%),linear-gradient(90deg,rgba(15,7,20,.35),transparent),url("https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1300&q=90");background-size:cover;background-position:center 35%}
+.auth-art{min-height:610px;position:relative;border-radius:17px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:28px 36px 40px;background-image:linear-gradient(0deg,rgba(15,7,20,.96),rgba(15,7,20,.08) 90%),linear-gradient(90deg,rgba(15,7,20,.35),transparent),url("assets/hero-glamour.png");background-size:cover;background-position:center 38%}
 .auth-brand{position:relative;z-index:1;display:flex;align-items:center;gap:12px}.auth-brand strong{display:block;letter-spacing:2px}.auth-brand small{display:block;font-size:9px;letter-spacing:2px;color:#e1b7d7}
 .auth-art-copy{position:relative;z-index:1}.auth-art-copy h1{font-size:clamp(38px,4vw,54px);line-height:1.08}.auth-art-copy p{max-width:390px;color:#e2d1e4;line-height:1.8}
 .auth-panel{padding:55px 45px;display:flex;flex-direction:column;justify-content:center}
@@ -207,3 +207,5 @@ textarea{resize:vertical;line-height:1.7}select{appearance:auto}
  .stat{padding:11px 8px}.stat small{display:none}
  .hero{min-height:330px}
 }
+
+.quick-art{display:none}
