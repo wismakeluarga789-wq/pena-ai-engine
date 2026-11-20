@@ -22,6 +22,9 @@ let currentNovel = null;
 let chapterData = [];
 let currentChapterIndex = -1;
 let chapterSearchText = "";
+let editingCharacterId = null;
+let characterRecords = [];
+let storyBibleRecord = null;
 
 
 // =====================================================
@@ -1230,6 +1233,8 @@ async function bukaNovel(id) {
   await muatBab();
 
   await muatKarakter();
+
+  await muatStoryBible();
 
   muatGaya();
 }
@@ -2521,277 +2526,305 @@ async function tulisBab() {
 
 
 // =====================================================
-// KARAKTER
+// KARAKTER - PROFIL, EDIT, DAN HAPUS
 // =====================================================
 
-async function muatKarakter() {
+function resetFormKarakter() {
+  editingCharacterId = null;
 
-  if (
-    !currentNovel ||
-    !currentUser
-  ) {
-    return;
-  }
+  [
+    "charName", "charAge", "charRole", "charTrait",
+    "charBackground", "charRelationship", "charGoal",
+    "charSecret", "charNotes"
+  ].forEach(id => {
+    if (el(id)) el(id).value = "";
+  });
 
+  const saveButton = el("addCharacterBtn");
+  if (saveButton) saveButton.textContent = "＋ Simpan Karakter";
 
-  const box =
-    el("characterList");
-
-
-  if (!box) {
-    return;
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await supabase
-      .from("novel_karakter")
-      .select("*")
-      .eq(
-        "novel_id",
-        currentNovel.id
-      )
-      .eq(
-        "user_id",
-        currentUser.id
-      )
-      .order(
-        "created_at",
-        {
-          ascending: true
-        }
-      );
-
-
-  if (error) {
-
-    box.innerHTML = `
-      <div class="card">
-
-        Gagal memuat karakter.
-
-        <br><br>
-
-        ${escapeHTML(
-          error.message
-        )}
-
-      </div>
-    `;
-
-    return;
-  }
-
-
-  if (
-    !data ||
-    data.length === 0
-  ) {
-
-    box.innerHTML = `
-      <div class="card">
-        Belum ada karakter.
-      </div>
-    `;
-
-    return;
-  }
-
-
-  box.innerHTML =
-    data.map(c => {
-
-      return `
-
-        <div class="card">
-
-          <h3>
-            ${escapeHTML(
-              c.nama
-            )}
-          </h3>
-
-          ${
-            c.umur
-              ? `<p>Umur: ${c.umur}</p>`
-              : ""
-          }
-
-          ${
-            c.peran
-              ? `<p>${escapeHTML(
-                  c.peran
-                )}</p>`
-              : ""
-          }
-
-          ${
-            c.sifat
-              ? `<p>${escapeHTML(
-                  c.sifat
-                )}</p>`
-              : ""
-          }
-
-          ${
-            c.latar_belakang
-              ? `<p>${escapeHTML(
-                  c.latar_belakang
-                )}</p>`
-              : ""
-          }
-
-        </div>
-
-      `;
-
-    }).join("");
+  const cancelButton = el("cancelCharacterEditBtn");
+  if (cancelButton) cancelButton.hidden = true;
 }
 
+function mulaiEditKarakter(characterId) {
+  const character = characterRecords.find(c => String(c.id) === String(characterId));
+  if (!character) {
+    msg("characterMessage", "Data karakter tidak ditemukan. Muat ulang daftar karakter.");
+    return;
+  }
 
-// =====================================================
-// SIMPAN KARAKTER
-// =====================================================
+  editingCharacterId = String(character.id);
+  const values = {
+    charName: character.nama,
+    charAge: character.umur,
+    charRole: character.peran,
+    charTrait: character.sifat,
+    charBackground: character.latar_belakang,
+    charRelationship: character.hubungan,
+    charGoal: character.tujuan,
+    charSecret: character.rahasia,
+    charNotes: character.catatan
+  };
+
+  Object.entries(values).forEach(([id, value]) => {
+    if (el(id)) el(id).value = value ?? "";
+  });
+
+  const saveButton = el("addCharacterBtn");
+  if (saveButton) saveButton.textContent = "💾 Simpan Perubahan";
+
+  const cancelButton = el("cancelCharacterEditBtn");
+  if (cancelButton) cancelButton.hidden = false;
+
+  msg("characterMessage", `Sedang mengedit profil ${character.nama}.`);
+  el("charName")?.focus();
+  el("characterSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function hapusKarakter(characterId) {
+  const character = characterRecords.find(c => String(c.id) === String(characterId));
+  if (!character || !currentNovel || !currentUser) return;
+
+  const confirmed = window.confirm(`Hapus karakter "${character.nama}" dari novel ini?`);
+  if (!confirmed) return;
+
+  msg("characterMessage", "Menghapus karakter...");
+
+  const { error } = await supabase
+    .from("novel_karakter")
+    .delete()
+    .eq("id", character.id)
+    .eq("novel_id", currentNovel.id)
+    .eq("user_id", currentUser.id);
+
+  if (error) {
+    msg("characterMessage", `Gagal menghapus karakter: ${error.message}`);
+    return;
+  }
+
+  if (String(editingCharacterId) === String(character.id)) resetFormKarakter();
+  msg("characterMessage", `Karakter ${character.nama} berhasil dihapus.`);
+  await muatKarakter();
+}
+
+async function muatKarakter() {
+  if (!currentNovel || !currentUser) return;
+
+  const box = el("characterList");
+  if (!box) return;
+
+  box.innerHTML = '<div class="card">Memuat profil karakter...</div>';
+
+  const { data, error } = await supabase
+    .from("novel_karakter")
+    .select("*")
+    .eq("novel_id", currentNovel.id)
+    .eq("user_id", currentUser.id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    characterRecords = [];
+    box.innerHTML = `<div class="card">Gagal memuat karakter.<br><br>${escapeHTML(error.message)}</div>`;
+    return;
+  }
+
+  characterRecords = Array.isArray(data) ? data : [];
+
+  if (!characterRecords.length) {
+    box.innerHTML = '<div class="card"><h3>Belum ada karakter</h3><p class="muted">Tambahkan tokoh utama, pendukung, dan antagonis beserta tujuan serta rahasianya.</p></div>';
+    updateStoryBibleStatus();
+    return;
+  }
+
+  box.innerHTML = characterRecords.map(c => `
+    <article class="card character-profile-card">
+      <div class="story-card-heading">
+        <span>♙</span>
+        <div>
+          <h3>${escapeHTML(c.nama || "Tanpa nama")}</h3>
+          <p>${escapeHTML(c.peran || "Peran belum diisi")}${c.umur ? ` · ${escapeHTML(c.umur)} tahun` : ""}</p>
+        </div>
+      </div>
+      ${c.sifat ? `<p><strong>Sifat:</strong> ${escapeHTML(c.sifat)}</p>` : ""}
+      ${c.latar_belakang ? `<p><strong>Latar belakang:</strong> ${escapeHTML(c.latar_belakang)}</p>` : ""}
+      ${c.hubungan ? `<p><strong>Hubungan:</strong> ${escapeHTML(c.hubungan)}</p>` : ""}
+      ${c.tujuan ? `<p><strong>Tujuan:</strong> ${escapeHTML(c.tujuan)}</p>` : ""}
+      ${c.rahasia ? `<p><strong>Rahasia:</strong> ${escapeHTML(c.rahasia)}</p>` : ""}
+      ${c.catatan ? `<p><strong>Catatan:</strong> ${escapeHTML(c.catatan)}</p>` : ""}
+      <div class="character-card-actions">
+        <button class="outline-btn" type="button" data-char-edit="${escapeHTML(c.id)}">✏️ Edit Profil</button>
+        <button class="danger-btn" type="button" data-char-delete="${escapeHTML(c.id)}">🗑️ Hapus</button>
+      </div>
+    </article>
+  `).join("");
+
+  box.querySelectorAll("[data-char-edit]").forEach(button => {
+    button.addEventListener("click", () => mulaiEditKarakter(button.dataset.charEdit));
+  });
+
+  box.querySelectorAll("[data-char-delete]").forEach(button => {
+    button.addEventListener("click", () => hapusKarakter(button.dataset.charDelete));
+  });
+
+  updateStoryBibleStatus();
+}
 
 async function simpanKarakter() {
+  if (!currentNovel || !currentUser) return;
 
-  if (
-    !currentNovel ||
-    !currentUser
-  ) {
-    return;
-  }
-
-
-  const nama =
-    el("charName")?.value.trim() ||
-    "";
-
-
+  const nama = el("charName")?.value.trim() || "";
   if (!nama) {
-
-    msg(
-      "characterMessage",
-      "Nama karakter wajib diisi."
-    );
-
+    msg("characterMessage", "Nama karakter wajib diisi.");
+    el("charName")?.focus();
     return;
   }
 
+  const button = el("addCharacterBtn");
+  if (button) button.disabled = true;
+  msg("characterMessage", editingCharacterId ? "Memperbarui profil karakter..." : "Menyimpan karakter...");
 
-  const button =
-    el("addCharacterBtn");
-
-
-  if (button) {
-    button.disabled = true;
-  }
-
-
-  msg(
-    "characterMessage",
-    "Menyimpan karakter..."
-  );
-
+  const payload = {
+    novel_id: currentNovel.id,
+    user_id: currentUser.id,
+    nama,
+    umur: el("charAge")?.value ? Number(el("charAge").value) : null,
+    peran: el("charRole")?.value.trim() || "",
+    sifat: el("charTrait")?.value.trim() || "",
+    latar_belakang: el("charBackground")?.value.trim() || "",
+    hubungan: el("charRelationship")?.value.trim() || "",
+    tujuan: el("charGoal")?.value.trim() || "",
+    rahasia: el("charSecret")?.value.trim() || "",
+    catatan: el("charNotes")?.value.trim() || ""
+  };
 
   try {
+    let result;
 
-    const {
-      error
-    } =
-      await supabase
+    if (editingCharacterId) {
+      result = await supabase
         .from("novel_karakter")
-        .insert({
+        .update(payload)
+        .eq("id", editingCharacterId)
+        .eq("novel_id", currentNovel.id)
+        .eq("user_id", currentUser.id);
+    } else {
+      result = await supabase
+        .from("novel_karakter")
+        .insert(payload);
+    }
 
-          novel_id:
-            currentNovel.id,
-
-          user_id:
-            currentUser.id,
-
-          nama,
-
-          umur:
-            el("charAge")?.value
-              ? Number(
-                  el("charAge").value
-                )
-              : null,
-
-          peran:
-            el("charRole")?.value.trim() ||
-            "",
-
-          sifat:
-            el("charTrait")?.value.trim() ||
-            "",
-
-          latar_belakang:
-            el("charBackground")?.value.trim() ||
-            ""
-
-        });
-
-
-    if (error) {
-
-      msg(
-        "characterMessage",
-        "Gagal menyimpan karakter: " +
-        error.message
-      );
-
+    if (result.error) {
+      msg("characterMessage", `Gagal menyimpan karakter: ${result.error.message}`);
       return;
     }
 
-
-    [
-      "charName",
-      "charAge",
-      "charRole",
-      "charTrait",
-      "charBackground"
-    ]
-      .forEach(id => {
-
-        if (el(id)) {
-          el(id).value = "";
-        }
-
-      });
-
-
-    msg(
-      "characterMessage",
-      "Karakter berhasil disimpan."
-    );
-
-
+    const wasEditing = Boolean(editingCharacterId);
+    resetFormKarakter();
+    msg("characterMessage", wasEditing ? "Perubahan profil karakter berhasil disimpan." : "Karakter berhasil disimpan.");
     await muatKarakter();
-
   } catch (error) {
-
-    msg(
-      "characterMessage",
-      "Gagal menyimpan karakter: " +
-      (
-        error.message ||
-        error
-      )
-    );
-
+    msg("characterMessage", `Gagal menyimpan karakter: ${error.message || error}`);
   } finally {
-
-    if (button) {
-      button.disabled = false;
-    }
-
+    if (button) button.disabled = false;
   }
 }
 
+
+// =====================================================
+// STORY BIBLE - SIMPANAN KANON NOVEL
+// =====================================================
+
+const STORY_BIBLE_FIELDS = [
+  ["world_description", "bibleWorld", "Dunia cerita"],
+  ["world_rules", "bibleRules", "Aturan dunia"],
+  ["locations", "bibleLocations", "Lokasi penting"],
+  ["factions", "bibleFactions", "Kelompok / organisasi"],
+  ["relationships", "bibleRelationships", "Hubungan antartokoh"],
+  ["timeline", "bibleTimeline", "Kronologi"],
+  ["canon_facts", "bibleCanonFacts", "Fakta kanon"],
+  ["secrets", "bibleSecrets", "Rahasia / misteri"],
+  ["continuity_notes", "bibleContinuityNotes", "Catatan kontinuitas"]
+];
+
+function updateStoryBibleStatus() {
+  const status = el("storyBibleStatus");
+  if (!status) return;
+
+  const filled = STORY_BIBLE_FIELDS.filter(([column, id]) => (el(id)?.value || "").trim()).length;
+  const characters = characterRecords.length;
+  status.textContent = `${filled} dari ${STORY_BIBLE_FIELDS.length} bagian Story Bible terisi · ${characters} profil karakter tersimpan. Catatan ini menjadi acuan saat AI menulis bab berikutnya.`;
+}
+
+async function muatStoryBible() {
+  if (!currentNovel || !currentUser) return;
+
+  msg("storyBibleMessage", "");
+  const status = el("storyBibleStatus");
+  if (status) status.textContent = "Memuat Story Bible...";
+
+  const { data, error } = await supabase
+    .from("novel_story_bible")
+    .select("*")
+    .eq("novel_id", currentNovel.id)
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Gagal memuat Story Bible:", error);
+    if (status) status.textContent = "Tabel Story Bible belum siap. Jalankan file SQL setup dari paket PENA AI terlebih dahulu.";
+    msg("storyBibleMessage", `Belum dapat memuat Story Bible: ${error.message}`);
+    return;
+  }
+
+  storyBibleRecord = data || null;
+  STORY_BIBLE_FIELDS.forEach(([column, id]) => {
+    const field = el(id);
+    if (field) field.value = storyBibleRecord?.[column] || "";
+  });
+
+  updateStoryBibleStatus();
+}
+
+async function simpanStoryBible() {
+  if (!currentNovel || !currentUser) {
+    msg("storyBibleMessage", "Buka sebuah novel terlebih dahulu.");
+    return;
+  }
+
+  const button = el("saveStoryBibleBtn");
+  if (button) button.disabled = true;
+  msg("storyBibleMessage", "Menyimpan Story Bible...");
+
+  const payload = {
+    novel_id: currentNovel.id,
+    user_id: currentUser.id,
+    updated_at: new Date().toISOString()
+  };
+
+  STORY_BIBLE_FIELDS.forEach(([column, id]) => {
+    payload[column] = el(id)?.value.trim() || "";
+  });
+
+  try {
+    const { data, error } = await supabase
+      .from("novel_story_bible")
+      .upsert(payload, { onConflict: "novel_id,user_id" })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    storyBibleRecord = data;
+    msg("storyBibleMessage", "Story Bible berhasil disimpan. Data akan dibaca saat PENA AI menulis bab berikutnya.");
+    updateStoryBibleStatus();
+  } catch (error) {
+    console.error("Gagal menyimpan Story Bible:", error);
+    msg("storyBibleMessage", `Gagal menyimpan Story Bible: ${error.message || error}. Pastikan SQL setup sudah dijalankan di Supabase.`);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
 
 // =====================================================
 // GAYA NOVEL
@@ -3250,6 +3283,12 @@ function pasangEvent() {
 
     addCharacterBtn:
       simpanKarakter,
+
+    cancelCharacterEditBtn:
+      resetFormKarakter,
+
+    saveStoryBibleBtn:
+      simpanStoryBible,
 
     saveStyleBtn:
       simpanGaya,
