@@ -1094,7 +1094,6 @@ async function tulisCepat() {
       await fetch(
         WORKER_URL,
         {
-
           method: "POST",
 
           headers: {
@@ -1121,7 +1120,6 @@ async function tulisCepat() {
               "Novel"
 
           })
-
         }
       );
 
@@ -1137,15 +1135,45 @@ async function tulisCepat() {
       );
     }
 
-    el("result").textContent =
-      result.text || "";
+    /* =================================================
+       TAMPILKAN HASIL DARI BACKEND
+       Backend PENA AI mengirim "hasil_tulisan"
+    ================================================= */
 
-    msg(
-      "writeMessage",
-      "Tulisan berhasil dibuat dan disimpan."
-    );
+    const hasilTulisan =
+      result.hasil_tulisan ||
+      result.text ||
+      result.content ||
+      "";
+
+    el("result").textContent =
+      hasilTulisan;
+
+    /* Pastikan area hasil terlihat */
+    el("result").style.display =
+      "block";
+
+    if (hasilTulisan) {
+
+      msg(
+        "writeMessage",
+        "Tulisan berhasil dibuat dan disimpan."
+      );
+
+    } else {
+
+      msg(
+        "writeMessage",
+        "Tulisan berhasil dibuat, tetapi hasilnya kosong."
+      );
+    }
 
   } catch (error) {
+
+    console.error(
+      "PENA AI error:",
+      error
+    );
 
     msg(
       "writeMessage",
