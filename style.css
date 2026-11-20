@@ -310,3 +310,115 @@ textarea{resize:vertical;line-height:1.7}select{appearance:auto}
   .detailTab{white-space:nowrap}
   .subnav{overflow-x:auto}
 }
+
+
+/* =====================================================
+   PENA AI — PENGHAPUSAN NOVEL, KONTRAS TEKS & FOTO MOBILE
+   ===================================================== */
+
+/* Kartu daftar novel dan tombol aksinya */
+.novel-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(145deg,#24152d,#1a1022);
+}
+.novel-card-copy{min-width:0;flex:1}
+.novel-card h3{margin:0 0 8px;color:#fff7fc;font:700 21px "Playfair Display",Georgia,serif;overflow-wrap:anywhere}
+.novel-card-meta{margin:0 0 6px;color:#e2d5e8;font-size:12px;line-height:1.6}
+.novel-card-count{margin:0;color:#cbbbd3;font-size:12px}
+.novel-card-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;flex:0 0 auto}
+.novel-card-actions button{min-height:42px}
+.novel-card-actions .danger-btn{color:#ffd5dc;background:rgba(170,43,68,.22);border-color:rgba(255,130,150,.52)}
+.novel-card-actions .danger-btn:hover{background:rgba(190,45,75,.34)}
+
+/* Daftar bab: teks harus terang dan terbaca di kartu gelap */
+.chapter-select-btn{
+  color:#fff7fc !important;
+  background-color:rgba(255,255,255,.045);
+  font-family:"DM Sans",Arial,sans-serif;
+}
+.chapter-select-btn strong{display:inline-block;color:#fff7fc !important;font-size:13px;font-weight:800;margin-bottom:3px}
+.chapter-select-btn small{color:#e4d8eb !important;font-size:11px;line-height:1.55}
+#chapterList .chapter-workspace{color:#fff7fc}
+#chapterList .chapter-workspace h2,
+#chapterList .chapter-workspace h3,
+#chapterList .chapter-workspace strong{color:#fff7fc}
+#chapterList .chapter-workspace p,
+#chapterList .chapter-workspace span{color:#e2d6e8}
+#chapterList .chapter-text{color:#fff7fc;line-height:1.95}
+#chapterList .chapter-workspace button:not(.primary-btn):not(.outline-btn):not(.danger-btn){
+  color:#fff7fc;
+  background:#2a1b34;
+  border:1px solid rgba(255,255,255,.17);
+  border-radius:9px;
+  padding:9px 13px;
+}
+#chapterList .chapter-workspace button:disabled{color:#b9aabe;opacity:.52}
+input::placeholder,textarea::placeholder{color:#aa98b2}
+
+/* Foto inspirasi: tampilkan foto utuh, bukan crop kepala */
+.inspiration-card{
+  background:#160e1e;
+}
+.inspiration-card img{
+  object-fit:contain !important;
+  object-position:center top !important;
+  background:#160e1e;
+}
+.inspiration-card:hover img{transform:none}
+
+/* NPC unggulan: kurangi tinggi dan gunakan contain agar kepala tidak terpotong */
+.npc-card img{
+  height:180px !important;
+  object-fit:contain !important;
+  object-position:center top !important;
+  background:#160e1e;
+}
+
+/* Foto latar Mode Cerita dan kartu perpustakaan ditampilkan utuh di sisi kanan */
+.mode-card,
+.library-card{
+  background-color:#1c1127 !important;
+  background-size:cover, auto 100% !important;
+  background-position:center, right top !important;
+  background-repeat:no-repeat !important;
+}
+
+/* Sidebar: jangan perbesar foto sampai bagian kepala terpotong */
+#studioSection .sidebar .sidebar-bottom{
+  background-size:cover, auto 100% !important;
+  background-position:center, right top !important;
+  background-repeat:no-repeat !important;
+  background-color:#1b1022 !important;
+}
+
+@media(max-width:760px){
+  .novel-card{align-items:stretch;flex-direction:column;gap:14px}
+  .novel-card-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .novel-card-actions button{width:100%;padding:11px 9px;font-size:12px}
+  .inspiration-card{height:180px}
+  .npc-card img{height:165px !important}
+  .mode-card,.library-card{
+    min-height:190px;
+    background-size:cover, auto 100% !important;
+    background-position:center, right top !important;
+  }
+  /* Layout daftar bab menjadi satu kolom pada layar HP */
+  .chapter-workspace > div[style*="display:grid"]{
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+  .chapter-workspace > div[style*="display:grid"] > .card{
+    position:static !important;
+  }
+}
+
+@media(max-width:420px){
+  .inspiration-card{height:165px}
+  .inspiration-overlay{padding:8px}
+  .inspiration-overlay h3{font-size:11px}
+  .npc-card img{height:155px !important}
+  .novel-card-actions{grid-template-columns:1fr}
+}
