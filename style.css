@@ -422,3 +422,142 @@ input::placeholder,textarea::placeholder{color:#aa98b2}
   .npc-card img{height:155px !important}
   .novel-card-actions{grid-template-columns:1fr}
 }
+
+
+/* =====================================================
+   PENA AI — MODE CERITA AKTIF, DESKRIPSI TERBATAS & GALERI POTRET
+   ===================================================== */
+
+/* Jangan biarkan deskripsi menyentuh area foto di sisi kanan. */
+.mode-card,
+.library-card{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  background-position:center, right center !important;
+  background-size:cover, auto 86% !important;
+  background-repeat:no-repeat !important;
+  background-color:#1b1024 !important;
+}
+.mode-card::before,
+.library-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(25,12,32,.99) 0%,rgba(25,12,32,.94) 43%,rgba(25,12,32,.72) 66%,rgba(25,12,32,.18) 100%);
+}
+.mode-card>* ,
+.library-card>*{
+  position:relative;
+  z-index:1;
+}
+.mode-card>.mode-heading,
+.mode-card>strong,
+.mode-card>p,
+.mode-card>.mode-actions,
+.mode-card>.mode-hint{
+  max-width:72%;
+}
+.library-card>.eyebrow,
+.library-card>h2,
+.library-card>p,
+.library-card>.outline-btn{
+  max-width:70%;
+}
+.mode-card{min-height:245px !important;}
+.mode-card>strong{font-size:17px;line-height:1.35;}
+.mode-card>p{font-size:11px;line-height:1.55;margin-bottom:10px;}
+.mode-actions{display:flex;flex-direction:column;align-items:flex-start;gap:7px;}
+.mode-action-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  max-width:100%;
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.24);
+  color:#fff8fd;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.25;
+  white-space:normal;
+  text-align:center;
+}
+.mode-romance-btn{background:linear-gradient(110deg,rgba(202,53,143,.9),rgba(118,63,161,.9));border-color:#ee8bc9;}
+.mode-adult-btn{background:linear-gradient(110deg,rgba(112,47,120,.92),rgba(67,30,91,.92));border-color:#d889dd;}
+.mode-action-btn:hover{filter:brightness(1.14);transform:translateY(-1px);}
+.mode-hint{display:block;margin-top:10px;color:#e2cfe6;font-size:9px;line-height:1.45;max-width:72%;}
+
+/* Enam inspirasi disusun rata dan memakai foto portrait yang benar-benar terpusat. */
+.inspiration-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.inspiration-card{
+  height:252px;
+  min-width:0;
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:15px;
+  background:#160e1e;
+}
+.inspiration-card img{
+  display:block;
+  width:100%;
+  height:100%;
+  margin:0 auto;
+  object-fit:cover !important;
+  object-position:50% 24% !important;
+  background:#160e1e;
+  transform:none;
+}
+.inspiration-card:hover img{transform:scale(1.025);}
+.inspiration-overlay{
+  inset:42% 0 0;
+  padding:12px;
+  background:linear-gradient(transparent 0%,rgba(12,5,16,.48) 36%,rgba(12,5,16,.97) 100%);
+}
+.inspiration-overlay h3{font-size:16px;}
+.inspiration-overlay p{font-size:10px;line-height:1.4;}
+.npc-card img{
+  width:100%;
+  height:190px !important;
+  display:block;
+  margin:0 auto;
+  object-fit:cover !important;
+  object-position:50% 24% !important;
+  border-radius:12px;
+  background:#160e1e;
+}
+
+@media(max-width:760px){
+  .inspiration-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .inspiration-card{height:230px;}
+  .mode-card{min-height:235px !important;}
+  .mode-card>.mode-heading,
+  .mode-card>strong,
+  .mode-card>p,
+  .mode-card>.mode-actions,
+  .mode-card>.mode-hint{max-width:70%;}
+  .library-card>.eyebrow,
+  .library-card>h2,
+  .library-card>p,
+  .library-card>.outline-btn{max-width:68%;}
+  .mode-card,.library-card{background-size:cover,auto 78% !important;background-position:center,right center !important;}
+}
+@media(max-width:420px){
+  .inspiration-card{height:205px;}
+  .inspiration-overlay{padding:9px;}
+  .inspiration-overlay h3{font-size:13px;}
+  .inspiration-overlay p{font-size:9px;}
+  .mode-card>.mode-heading,
+  .mode-card>strong,
+  .mode-card>p,
+  .mode-card>.mode-actions,
+  .mode-card>.mode-hint{max-width:74%;}
+}
