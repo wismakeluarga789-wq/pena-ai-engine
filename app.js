@@ -2,25 +2,45 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = "https://qyeiwnwekqwhxwwbwyfq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_fjFOriVPPgI6_pFhIAurCw_jNwuX_kj";
-const WORKER_URL = "https://pena-ai-backend-groq.wismakeluarga789.workers.dev";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const WORKER_URL =
+  "https://pena-ai-backend-groq.wismakeluarga789.workers.dev";
+
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+
+// =====================================================
+// STATE
+// =====================================================
 
 let currentUser = null;
 let currentNovel = null;
 
-/* =====================================================
-   HELPER
-===================================================== */
+let chapterData = [];
+let currentChapterIndex = -1;
+let chapterSearchText = "";
+
+
+// =====================================================
+// HELPER
+// =====================================================
 
 function el(id) {
   return document.getElementById(id);
 }
 
+
 function msg(id, text) {
   const x = el(id);
-  if (x) x.textContent = text || "";
+
+  if (x) {
+    x.textContent = text || "";
+  }
 }
+
 
 function escapeHTML(text = "") {
   return String(text)
@@ -31,41 +51,75 @@ function escapeHTML(text = "") {
     .replaceAll("'", "&#039;");
 }
 
-function tanggal(value) {
-  if (!value) return "-";
 
-  return new Date(value).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
+function tanggal(value) {
+
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value).toLocaleDateString(
+    "id-ID",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    }
+  );
+}
+
+
+function hitungKata(text = "") {
+
+  const clean = String(text)
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!clean) {
+    return 0;
+  }
+
+  return clean.split(" ").length;
+}
+
+
+function formatAngka(number) {
+
+  return Number(number || 0)
+    .toLocaleString("id-ID");
+}
+
+
+function estimasiWaktuBaca(jumlahKata) {
+
+  if (!jumlahKata) {
+    return "0 menit";
+  }
+
+  const menit = Math.max(
+    1,
+    Math.ceil(jumlahKata / 200)
+  );
+
+  return `${menit} menit`;
+}
+
+
+function scrollKeAtas() {
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
   });
 }
 
-function hitungKata(text = "") {
-  const bersih = String(text).trim();
 
-  if (!bersih) return 0;
-
-  return bersih
-    .split(/\s+/)
-    .filter(Boolean)
-    .length;
-}
-
-function estimasiProgress(babSelesai, targetBab) {
-  const selesai = Number(babSelesai || 0);
-  const target = Number(targetBab || 0);
-
-  if (!target || target <= 0) return 0;
-
-  return Math.min(100, Math.round((selesai / target) * 100));
-}
-
-/* =====================================================
-   LOGIN / STUDIO
-===================================================== */
+// =====================================================
+// LOGIN / STUDIO
+// =====================================================
 
 function tampilkanStudio() {
+
   if (el("authSection")) {
     el("authSection").hidden = true;
   }
@@ -75,7 +129,9 @@ function tampilkanStudio() {
   }
 }
 
+
 function tampilkanLogin() {
+
   if (el("authSection")) {
     el("authSection").hidden = false;
   }
@@ -85,10 +141,19 @@ function tampilkanLogin() {
   }
 }
 
+
+// =====================================================
+// NAVIGASI HALAMAN
+// =====================================================
+
 function bukaHalaman(id) {
-  document.querySelectorAll(".page").forEach(page => {
-    page.hidden = true;
-  });
+
+  document
+    .querySelectorAll(".page")
+    .forEach(page => {
+      page.hidden = true;
+    });
+
 
   const page = el(id);
 
@@ -96,20 +161,31 @@ function bukaHalaman(id) {
     page.hidden = false;
   }
 
-  document.querySelectorAll(".menuBtn").forEach(btn => {
-    btn.classList.toggle(
-      "active",
-      btn.dataset.page === id
-    );
-  });
+
+  document
+    .querySelectorAll(".menuBtn")
+    .forEach(btn => {
+
+      btn.classList.toggle(
+        "active",
+        btn.dataset.page === id
+      );
+
+    });
 }
 
-/* =====================================================
-   LOGIN
-===================================================== */
+
+// =====================================================
+// LOGIN
+// =====================================================
 
 async function login() {
-  msg("authMessage", "Sedang masuk...");
+
+  msg(
+    "authMessage",
+    "Sedang masuk..."
+  );
+
 
   const email =
     el("email")?.value.trim() || "";
@@ -117,7 +193,9 @@ async function login() {
   const password =
     el("password")?.value || "";
 
+
   if (!email || !password) {
+
     msg(
       "authMessage",
       "Email dan password wajib diisi."
@@ -126,73 +204,21 @@ async function login() {
     return;
   }
 
+
   try {
-    const { data, error } =
+
+    const {
+      data,
+      error
+    } =
       await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-    if (error) {
-      msg("authMessage", error.message);
-      return;
-    }
-
-    currentUser = data.user;
-
-    tampilkanStudio();
-
-    await muatBeranda();
-    await muatNovel();
-
-  } catch (error) {
-    console.error("Login error:", error);
-
-    msg(
-      "authMessage",
-      error.message || "Gagal masuk."
-    );
-  }
-}
-
-async function daftar() {
-  msg(
-    "authMessage",
-    "Sedang mendaftarkan akun..."
-  );
-
-  const email =
-    el("email")?.value.trim() || "";
-
-  const password =
-    el("password")?.value || "";
-
-  if (!email || !password) {
-    msg(
-      "authMessage",
-      "Email dan password wajib diisi."
-    );
-
-    return;
-  }
-
-  if (password.length < 6) {
-    msg(
-      "authMessage",
-      "Password minimal 6 karakter."
-    );
-
-    return;
-  }
-
-  try {
-    const { error } =
-      await supabase.auth.signUp({
-        email,
-        password
-      });
 
     if (error) {
+
       msg(
         "authMessage",
         error.message
@@ -201,13 +227,107 @@ async function daftar() {
       return;
     }
 
+
+    currentUser =
+      data.user;
+
+
+    tampilkanStudio();
+
+    await muatBeranda();
+
+    await muatNovel();
+
+  } catch (error) {
+
+    console.error(
+      "Login error:",
+      error
+    );
+
+    msg(
+      "authMessage",
+      error.message ||
+      "Gagal masuk."
+    );
+  }
+}
+
+
+// =====================================================
+// DAFTAR
+// =====================================================
+
+async function daftar() {
+
+  msg(
+    "authMessage",
+    "Sedang mendaftarkan akun..."
+  );
+
+
+  const email =
+    el("email")?.value.trim() || "";
+
+  const password =
+    el("password")?.value || "";
+
+
+  if (!email || !password) {
+
+    msg(
+      "authMessage",
+      "Email dan password wajib diisi."
+    );
+
+    return;
+  }
+
+
+  if (password.length < 6) {
+
+    msg(
+      "authMessage",
+      "Password minimal 6 karakter."
+    );
+
+    return;
+  }
+
+
+  try {
+
+    const {
+      error
+    } =
+      await supabase.auth.signUp({
+        email,
+        password
+      });
+
+
+    if (error) {
+
+      msg(
+        "authMessage",
+        error.message
+      );
+
+      return;
+    }
+
+
     msg(
       "authMessage",
       "Pendaftaran berhasil. Periksa email jika konfirmasi diminta."
     );
 
   } catch (error) {
-    console.error("Signup error:", error);
+
+    console.error(
+      "Signup error:",
+      error
+    );
 
     msg(
       "authMessage",
@@ -217,70 +337,104 @@ async function daftar() {
   }
 }
 
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
 async function logout() {
+
   try {
+
     await supabase.auth.signOut();
+
   } catch (error) {
+
     console.error(
       "Logout error:",
       error
     );
   }
 
+
   currentUser = null;
+
   currentNovel = null;
+
+  chapterData = [];
+
+  currentChapterIndex = -1;
 
   tampilkanLogin();
 }
 
-/* =====================================================
-   BERANDA
-===================================================== */
+
+// =====================================================
+// BERANDA
+// =====================================================
 
 async function muatBeranda() {
-  if (!currentUser) return;
+
+  if (!currentUser) {
+    return;
+  }
+
 
   const novelCount =
     await supabase
       .from("novel")
-      .select("*", {
-        count: "exact",
-        head: true
-      })
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
       .eq(
         "user_id",
         currentUser.id
       );
+
 
   const babCount =
     await supabase
       .from("novel_bab")
-      .select("*", {
-        count: "exact",
-        head: true
-      })
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
       .eq(
         "user_id",
         currentUser.id
       );
 
+
   if (el("totalNovel")) {
+
     el("totalNovel").textContent =
       novelCount.count || 0;
   }
 
+
   if (el("totalBab")) {
+
     el("totalBab").textContent =
       babCount.count || 0;
   }
 }
 
-/* =====================================================
-   BUAT NOVEL
-===================================================== */
+
+// =====================================================
+// BUAT NOVEL
+// =====================================================
 
 async function buatNovel() {
+
   if (!currentUser) {
+
     alert(
       "Silakan login terlebih dahulu."
     );
@@ -288,30 +442,47 @@ async function buatNovel() {
     return;
   }
 
-  const judul =
-    window.prompt("Judul novel:");
 
-  if (!judul || !judul.trim()) {
+  const judul =
+    window.prompt(
+      "Judul novel:"
+    );
+
+
+  if (
+    !judul ||
+    !judul.trim()
+  ) {
     return;
   }
+
 
   const genre =
     window.prompt(
       "Genre novel:",
       "Drama"
-    ) || "Drama";
+    ) ||
+    "Drama";
+
 
   const premis =
     window.prompt(
       "Premis singkat cerita:",
       ""
-    ) || "";
+    ) ||
+    "";
+
 
   try {
-    const { data, error } =
+
+    const {
+      data,
+      error
+    } =
       await supabase
         .from("novel")
         .insert({
+
           user_id:
             currentUser.id,
 
@@ -333,11 +504,6 @@ async function buatNovel() {
           premis:
             premis.trim(),
 
-          /*
-            Tidak lagi dibatasi 100 bab.
-            NULL berarti novel tidak memiliki
-            batas bab dari sistem.
-          */
           target_bab:
             null,
 
@@ -346,11 +512,14 @@ async function buatNovel() {
 
           status:
             "aktif"
+
         })
         .select()
         .single();
 
+
     if (error) {
+
       alert(
         "Gagal membuat novel:\n\n" +
         error.message
@@ -359,7 +528,10 @@ async function buatNovel() {
       return;
     }
 
-    currentNovel = data;
+
+    currentNovel =
+      data;
+
 
     await muatBeranda();
 
@@ -368,6 +540,7 @@ async function buatNovel() {
     );
 
   } catch (error) {
+
     alert(
       "Gagal membuat novel:\n\n" +
       (
@@ -378,24 +551,38 @@ async function buatNovel() {
   }
 }
 
-/* =====================================================
-   DAFTAR NOVEL
-===================================================== */
+
+// =====================================================
+// DAFTAR NOVEL
+// =====================================================
 
 async function muatNovel() {
-  if (!currentUser) return;
+
+  if (!currentUser) {
+    return;
+  }
+
 
   const box =
     el("novelList");
 
-  if (!box) return;
 
-  box.innerHTML =
-    `<div class="card">
+  if (!box) {
+    return;
+  }
+
+
+  box.innerHTML = `
+    <div class="card">
       Memuat novel...
-    </div>`;
+    </div>
+  `;
 
-  const { data, error } =
+
+  const {
+    data,
+    error
+  } =
     await supabase
       .from("novel")
       .select("*")
@@ -410,75 +597,66 @@ async function muatNovel() {
         }
       );
 
+
   if (error) {
+
     box.innerHTML = `
       <div class="card">
-        Gagal memuat novel.<br><br>
-        ${escapeHTML(
-          error.message
-        )}
+        Gagal memuat novel.
+        <br><br>
+        ${escapeHTML(error.message)}
       </div>
     `;
 
     return;
   }
 
-  if (!data ||
-      data.length === 0) {
+
+  if (
+    !data ||
+    data.length === 0
+  ) {
 
     box.innerHTML = `
       <div class="card">
-        <h3>Belum ada novel</h3>
+
+        <h3>
+          Belum ada novel
+        </h3>
 
         <p>
           Buat novel pertama kamu
           dan mulai menulis.
         </p>
 
-        <button id="emptyCreateNovel">
+        <button
+          id="emptyCreateNovel">
           + Buat Novel Baru
         </button>
+
       </div>
     `;
 
+
     const emptyBtn =
       el("emptyCreateNovel");
+
 
     if (emptyBtn) {
       emptyBtn.onclick =
         buatNovel;
     }
 
+
     return;
   }
+
 
   box.innerHTML =
     data.map(novel => {
 
-      const babSelesai =
-        Number(
-          novel.bab_selesai ||
-          0
-        );
-
-      const targetBab =
-        Number(
-          novel.target_bab ||
-          0
-        );
-
-      const progress =
-        estimasiProgress(
-          babSelesai,
-          targetBab
-        );
-
-      const progressText =
-        targetBab > 0
-          ? `${babSelesai} / ${targetBab} bab`
-          : `${babSelesai} bab`;
-
       return `
+
         <div class="card">
 
           <h3>
@@ -492,7 +670,9 @@ async function muatNovel() {
               novel.genre ||
               "Drama"
             )}
+
             ·
+
             ${escapeHTML(
               novel.gaya ||
               "Natural"
@@ -500,43 +680,23 @@ async function muatNovel() {
           </p>
 
           <p>
-            ${progressText}
+            Bab
+            ${novel.bab_selesai || 0}
           </p>
-
-          ${
-            targetBab > 0
-              ? `
-                <div
-                  style="
-                    background:rgba(255,255,255,.08);
-                    border-radius:999px;
-                    height:8px;
-                    overflow:hidden;
-                    margin:10px 0;
-                  "
-                >
-                  <div
-                    style="
-                      width:${progress}%;
-                      height:100%;
-                    "
-                  ></div>
-                </div>
-              `
-              : ""
-          }
 
           <button
             class="openNovelButton"
-            data-id="${novel.id}"
-          >
+            data-id="${novel.id}">
+
             Buka Novel
+
           </button>
 
         </div>
       `;
+    })
+    .join("");
 
-    }).join("");
 
   document
     .querySelectorAll(
@@ -553,14 +713,22 @@ async function muatNovel() {
     });
 }
 
-/* =====================================================
-   BUKA NOVEL
-===================================================== */
+
+// =====================================================
+// BUKA NOVEL
+// =====================================================
 
 async function bukaNovel(id) {
-  if (!currentUser) return;
 
-  const { data, error } =
+  if (!currentUser) {
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } =
     await supabase
       .from("novel")
       .select("*")
@@ -574,7 +742,9 @@ async function bukaNovel(id) {
       )
       .single();
 
+
   if (error) {
+
     alert(
       "Gagal membuka novel:\n\n" +
       error.message
@@ -583,14 +753,21 @@ async function bukaNovel(id) {
     return;
   }
 
-  currentNovel = data;
+
+  currentNovel =
+    data;
+
 
   if (el("detailTitle")) {
+
     el("detailTitle").textContent =
-      data.judul || "-";
+      data.judul ||
+      "-";
   }
 
+
   if (el("detailInfo")) {
+
     el("detailInfo").textContent =
       `${data.genre || "Drama"} · ` +
       `${data.gaya || "Natural"} · ` +
@@ -598,27 +775,34 @@ async function bukaNovel(id) {
       `Bab ${data.bab_selesai || 0}`;
   }
 
+
   if (el("detailPremise")) {
+
     el("detailPremise").textContent =
       data.premis ||
       "Belum ada premis.";
   }
 
+
   bukaHalaman(
     "detailPage"
   );
 
+
   await muatBab();
+
   await muatKarakter();
 
   muatGaya();
 }
 
-/* =====================================================
-   BAB
-===================================================== */
+
+// =====================================================
+// MUAT SEMUA BAB
+// =====================================================
 
 async function muatBab() {
+
   if (
     !currentNovel ||
     !currentUser
@@ -626,17 +810,27 @@ async function muatBab() {
     return;
   }
 
+
   const box =
     el("chapterList");
 
-  if (!box) return;
 
-  box.innerHTML =
-    `<div class="card">
+  if (!box) {
+    return;
+  }
+
+
+  box.innerHTML = `
+    <div class="card">
       Memuat bab...
-    </div>`;
+    </div>
+  `;
 
-  const { data, error } =
+
+  const {
+    data,
+    error
+  } =
     await supabase
       .from("novel_bab")
       .select("*")
@@ -655,205 +849,945 @@ async function muatBab() {
         }
       );
 
+
   if (error) {
+
     box.innerHTML = `
       <div class="card">
-        Gagal memuat bab.<br><br>
+
+        Gagal memuat bab.
+
+        <br><br>
 
         ${escapeHTML(
           error.message
         )}
+
       </div>
     `;
 
     return;
   }
 
-  if (!data ||
-      data.length === 0) {
+
+  chapterData =
+    data || [];
+
+
+  if (
+    chapterData.length === 0
+  ) {
+
+    currentChapterIndex =
+      -1;
+
 
     box.innerHTML = `
+
       <div class="card">
-        <h3>Belum ada bab</h3>
+
+        <h3>
+          Belum ada bab
+        </h3>
 
         <p>
           Klik "Tulis Bab Berikutnya"
           untuk memulai cerita.
         </p>
+
       </div>
+
     `;
 
     return;
   }
 
-  box.innerHTML =
-    data.map(bab => {
 
-      const isi =
-        bab.isi_bab || "";
+  // ===================================================
+  // DEFAULT KE BAB TERAKHIR
+  // ===================================================
 
-      const jumlahKata =
-        bab.jumlah_karakter
-          ? "-"
-          : hitungKata(isi);
+  currentChapterIndex =
+    chapterData.length - 1;
 
-      return `
-        <article class="card">
 
-          <h3>
-            Bab ${bab.nomor_bab}
+  renderChapterWorkspace();
+}
 
-            ${
-              bab.judul_bab
-                ? " — " +
-                  escapeHTML(
-                    bab.judul_bab
-                  )
-                : ""
-            }
-          </h3>
 
-          <p>
-            ${tanggal(
-              bab.created_at
-            )}
+// =====================================================
+// RENDER WORKSPACE BAB
+// =====================================================
 
-            ·
+function renderChapterWorkspace() {
 
-            ${jumlahKata}
-            kata
-          </p>
+  const box =
+    el("chapterList");
 
-          <div class="chapter-text">
-            ${escapeHTML(
-              isi
-            ).replace(
-              /\n/g,
-              "<br><br>"
-            )}
-          </div>
 
-          <div
+  if (!box) {
+    return;
+  }
+
+
+  const currentChapter =
+    chapterData[
+      currentChapterIndex
+    ];
+
+
+  if (!currentChapter) {
+    return;
+  }
+
+
+  const kata =
+    hitungKata(
+      currentChapter.isi_bab
+    );
+
+
+  const filtered =
+    chapterData.filter(
+      bab => {
+
+        const target =
+          `${bab.nomor_bab} ${bab.judul_bab || ""}`
+            .toLowerCase();
+
+        return target.includes(
+          chapterSearchText
+            .toLowerCase()
+        );
+
+      }
+    );
+
+
+  box.innerHTML = `
+
+    <div class="chapter-workspace">
+
+      <!-- =========================================
+           SEARCH
+      ========================================== -->
+
+      <div class="card">
+
+        <div
+          style="
+            display:flex;
+            gap:10px;
+            align-items:center;
+            flex-wrap:wrap;
+          ">
+
+          <input
+            id="chapterSearch"
+            type="text"
+            placeholder="Cari bab atau judul..."
+            value="${escapeHTML(
+              chapterSearchText
+            )}"
             style="
-              display:flex;
-              gap:8px;
-              margin-top:12px;
-              flex-wrap:wrap;
+              flex:1;
+              min-width:220px;
             "
           >
 
-            <button
-              class="copyChapterButton"
-              data-id="${bab.id}"
-            >
-              Salin Bab
-            </button>
+          <span>
+            ${chapterData.length}
+            bab
+          </span>
 
-            <button
-              class="deleteChapterButton"
-              data-id="${bab.id}"
-            >
-              Hapus Bab
-            </button>
+        </div>
+
+      </div>
+
+
+      <!-- =========================================
+           LAYOUT
+      ========================================== -->
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:
+            minmax(220px, 30%)
+            minmax(0, 1fr);
+          gap:16px;
+          align-items:start;
+        ">
+
+
+        <!-- =======================================
+             DAFTAR BAB
+        ======================================== -->
+
+        <div
+          class="card"
+          style="
+            position:sticky;
+            top:20px;
+          ">
+
+          <h3>
+            Daftar Bab
+          </h3>
+
+
+          <div
+            style="
+              max-height:70vh;
+              overflow-y:auto;
+              padding-right:5px;
+            ">
+
+            ${filtered.length
+              ? filtered.map(
+                  bab => {
+
+                    const index =
+                      chapterData.findIndex(
+                        x =>
+                          String(x.id) ===
+                          String(bab.id)
+                      );
+
+
+                    const active =
+                      index ===
+                      currentChapterIndex;
+
+
+                    const babWords =
+                      hitungKata(
+                        bab.isi_bab
+                      );
+
+
+                    return `
+
+                      <button
+                        class="chapter-select-btn"
+                        data-index="${index}"
+                        style="
+                          width:100%;
+                          text-align:left;
+                          padding:12px;
+                          margin-bottom:8px;
+                          border-radius:10px;
+                          cursor:pointer;
+                          border:1px solid
+                            ${active
+                              ? "rgba(180,100,255,.8)"
+                              : "rgba(255,255,255,.08)"};
+                          background:
+                            ${active
+                              ? "rgba(120,60,180,.25)"
+                              : "rgba(255,255,255,.03)"};
+                        ">
+
+                        <strong>
+                          Bab ${bab.nomor_bab}
+                        </strong>
+
+                        <br>
+
+                        <small>
+                          ${escapeHTML(
+                            bab.judul_bab ||
+                            "Tanpa judul"
+                          )}
+                        </small>
+
+                        <br>
+
+                        <small>
+                          ${formatAngka(
+                            babWords
+                          )}
+                          kata
+                        </small>
+
+                      </button>
+
+                    `;
+
+                  }
+                ).join("")
+              : `
+
+                <p>
+                  Bab tidak ditemukan.
+                </p>
+
+              `
+            }
 
           </div>
 
-        </article>
-      `;
+        </div>
 
-    }).join("");
 
-  /* ===============================
-     COPY BAB
-  =============================== */
+        <!-- =======================================
+             EDITOR BAB
+        ======================================== -->
+
+        <div>
+
+          <div class="card">
+
+            <!-- NAVIGASI -->
+
+            <div
+              style="
+                display:flex;
+                justify-content:space-between;
+                gap:10px;
+                flex-wrap:wrap;
+                align-items:center;
+                margin-bottom:15px;
+              ">
+
+              <button
+                id="prevChapterBtn"
+                ${currentChapterIndex <= 0
+                  ? "disabled"
+                  : ""}>
+
+                ← Bab Sebelumnya
+
+              </button>
+
+
+              <strong>
+
+                Bab ${currentChapter.nomor_bab}
+
+              </strong>
+
+
+              <button
+                id="nextChapterBtn"
+                ${currentChapterIndex >=
+                  chapterData.length - 1
+                  ? "disabled"
+                  : ""}>
+
+                Bab Berikutnya →
+
+              </button>
+
+            </div>
+
+
+            <!-- JUDUL -->
+
+            <h2>
+              ${escapeHTML(
+                currentChapter.judul_bab ||
+                `Bab ${currentChapter.nomor_bab}`
+              )}
+            </h2>
+
+
+            <!-- INFO -->
+
+            <div
+              style="
+                display:flex;
+                gap:10px;
+                flex-wrap:wrap;
+                margin-bottom:20px;
+                opacity:.8;
+              ">
+
+              <span>
+                📅
+                ${tanggal(
+                  currentChapter.created_at
+                )}
+              </span>
+
+              <span>
+                ·
+              </span>
+
+              <span>
+                📝
+                ${formatAngka(
+                  kata
+                )}
+                kata
+              </span>
+
+              <span>
+                ·
+              </span>
+
+              <span>
+                ⏱
+                ±${estimasiWaktuBaca(
+                  kata
+                )}
+              </span>
+
+            </div>
+
+
+            <!-- ISI BAB -->
+
+            <div
+              id="chapterContentArea">
+
+              <div
+                class="chapter-text"
+                style="
+                  line-height:1.9;
+                  white-space:normal;
+                ">
+
+                ${escapeHTML(
+                  currentChapter.isi_bab ||
+                  ""
+                ).replace(
+                  /\n/g,
+                  "<br><br>"
+                )}
+
+              </div>
+
+            </div>
+
+
+            <!-- TOMBOL -->
+
+            <div
+              style="
+                display:flex;
+                gap:10px;
+                flex-wrap:wrap;
+                margin-top:25px;
+                padding-top:20px;
+                border-top:1px solid
+                  rgba(255,255,255,.08);
+              ">
+
+              <button
+                id="copyCurrentChapterBtn">
+
+                📋 Salin Bab
+
+              </button>
+
+
+              <button
+                id="editCurrentChapterBtn">
+
+                ✏️ Edit Bab
+
+              </button>
+
+
+              <button
+                id="deleteCurrentChapterBtn">
+
+                🗑️ Hapus Bab
+
+              </button>
+
+            </div>
+
+
+            <div
+              id="chapterActionMessage"
+              style="
+                margin-top:12px;
+              ">
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  // ===================================================
+  // EVENT SEARCH
+  // ===================================================
+
+  const search =
+    el("chapterSearch");
+
+
+  if (search) {
+
+    search.oninput =
+      function () {
+
+        chapterSearchText =
+          this.value;
+
+        renderChapterWorkspace();
+
+      };
+
+  }
+
+
+  // ===================================================
+  // PILIH BAB
+  // ===================================================
 
   document
     .querySelectorAll(
-      ".copyChapterButton"
+      ".chapter-select-btn"
     )
     .forEach(button => {
 
       button.onclick =
-        async () => {
+        () => {
 
-          const bab =
-            data.find(
-              x =>
-                String(x.id) ===
-                String(
-                  button.dataset.id
-                )
+          currentChapterIndex =
+            Number(
+              button.dataset.index
             );
 
-          if (!bab) return;
+          renderChapterWorkspace();
 
-          try {
+          scrollKeAtas();
 
-            await navigator.clipboard.writeText(
-              bab.isi_bab ||
-              ""
-            );
-
-            msg(
-              "chapterMessage",
-              `Bab ${bab.nomor_bab} berhasil disalin.`
-            );
-
-          } catch (error) {
-
-            msg(
-              "chapterMessage",
-              "Gagal menyalin bab."
-            );
-
-          }
         };
 
     });
 
-  /* ===============================
-     HAPUS BAB
-  =============================== */
 
-  document
-    .querySelectorAll(
-      ".deleteChapterButton"
-    )
-    .forEach(button => {
+  // ===================================================
+  // SEBELUMNYA
+  // ===================================================
 
-      button.onclick =
-        () =>
-          hapusBab(
-            button.dataset.id
+  const prev =
+    el("prevChapterBtn");
+
+
+  if (prev) {
+
+    prev.onclick =
+      () => {
+
+        if (
+          currentChapterIndex > 0
+        ) {
+
+          currentChapterIndex--;
+
+          renderChapterWorkspace();
+
+          scrollKeAtas();
+
+        }
+
+      };
+
+  }
+
+
+  // ===================================================
+  // BERIKUTNYA
+  // ===================================================
+
+  const next =
+    el("nextChapterBtn");
+
+
+  if (next) {
+
+    next.onclick =
+      () => {
+
+        if (
+          currentChapterIndex <
+          chapterData.length - 1
+        ) {
+
+          currentChapterIndex++;
+
+          renderChapterWorkspace();
+
+          scrollKeAtas();
+
+        }
+
+      };
+
+  }
+
+
+  // ===================================================
+  // SALIN
+  // ===================================================
+
+  const copyBtn =
+    el("copyCurrentChapterBtn");
+
+
+  if (copyBtn) {
+
+    copyBtn.onclick =
+      async () => {
+
+        try {
+
+          await navigator.clipboard.writeText(
+            currentChapter.isi_bab ||
+            ""
           );
 
-    });
+
+          msg(
+            "chapterActionMessage",
+            "Bab berhasil disalin."
+          );
+
+        } catch {
+
+          msg(
+            "chapterActionMessage",
+            "Gagal menyalin bab."
+          );
+
+        }
+
+      };
+
+  }
+
+
+  // ===================================================
+  // EDIT
+  // ===================================================
+
+  const editBtn =
+    el("editCurrentChapterBtn");
+
+
+  if (editBtn) {
+
+    editBtn.onclick =
+      () => {
+
+        modeEditBab();
+
+      };
+
+  }
+
+
+  // ===================================================
+  // HAPUS
+  // ===================================================
+
+  const deleteBtn =
+    el("deleteCurrentChapterBtn");
+
+
+  if (deleteBtn) {
+
+    deleteBtn.onclick =
+      () => {
+
+        hapusBab(
+          currentChapter.id
+        );
+
+      };
+
+  }
 }
 
-/* =====================================================
-   HAPUS BAB
-===================================================== */
 
-async function hapusBab(id) {
-  if (
-    !currentNovel ||
-    !currentUser
-  ) {
+// =====================================================
+// MODE EDIT BAB
+// =====================================================
+
+function modeEditBab() {
+
+  const chapter =
+    chapterData[
+      currentChapterIndex
+    ];
+
+
+  if (!chapter) {
     return;
   }
 
-  const yakin =
-    window.confirm(
-      "Hapus bab ini?\n\nTindakan ini tidak dapat dibatalkan."
+
+  const area =
+    el("chapterContentArea");
+
+
+  if (!area) {
+    return;
+  }
+
+
+  area.innerHTML = `
+
+    <textarea
+      id="chapterEditText"
+      style="
+        width:100%;
+        min-height:650px;
+        padding:20px;
+        resize:vertical;
+        line-height:1.8;
+        font-size:16px;
+        box-sizing:border-box;
+      ">${escapeHTML(
+        chapter.isi_bab ||
+        ""
+      )}</textarea>
+
+  `;
+
+
+  const actionMessage =
+    el("chapterActionMessage");
+
+
+  if (actionMessage) {
+
+    actionMessage.innerHTML = `
+
+      <div
+        style="
+          display:flex;
+          gap:10px;
+          flex-wrap:wrap;
+          margin-top:10px;
+        ">
+
+        <button
+          id="saveEditedChapterBtn">
+
+          💾 Simpan Perubahan
+
+        </button>
+
+
+        <button
+          id="cancelEditChapterBtn">
+
+          Batal
+
+        </button>
+
+      </div>
+
+    `;
+
+  }
+
+
+  const saveBtn =
+    el("saveEditedChapterBtn");
+
+
+  if (saveBtn) {
+
+    saveBtn.onclick =
+      simpanEditBab;
+
+  }
+
+
+  const cancelBtn =
+    el("cancelEditChapterBtn");
+
+
+  if (cancelBtn) {
+
+    cancelBtn.onclick =
+      () => {
+
+        renderChapterWorkspace();
+
+      };
+
+  }
+}
+
+
+// =====================================================
+// SIMPAN EDIT BAB
+// =====================================================
+
+async function simpanEditBab() {
+
+  const chapter =
+    chapterData[
+      currentChapterIndex
+    ];
+
+
+  if (!chapter) {
+    return;
+  }
+
+
+  const textarea =
+    el("chapterEditText");
+
+
+  if (!textarea) {
+    return;
+  }
+
+
+  const isiBaru =
+    textarea.value;
+
+
+  const saveBtn =
+    el("saveEditedChapterBtn");
+
+
+  if (saveBtn) {
+    saveBtn.disabled = true;
+  }
+
+
+  msg(
+    "chapterActionMessage",
+    "Menyimpan perubahan..."
+  );
+
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("novel_bab")
+        .update({
+
+          isi_bab:
+            isiBaru,
+
+          updated_at:
+            new Date().toISOString()
+
+        })
+        .eq(
+          "id",
+          chapter.id
+        )
+        .eq(
+          "novel_id",
+          currentNovel.id
+        )
+        .eq(
+          "user_id",
+          currentUser.id
+        )
+        .select()
+        .single();
+
+
+    if (error) {
+
+      msg(
+        "chapterActionMessage",
+        "Gagal menyimpan: " +
+        error.message
+      );
+
+      if (saveBtn) {
+        saveBtn.disabled = false;
+      }
+
+      return;
+    }
+
+
+    chapterData[
+      currentChapterIndex
+    ] =
+      data;
+
+
+    msg(
+      "chapterActionMessage",
+      "Perubahan berhasil disimpan."
     );
+
+
+    renderChapterWorkspace();
+
+  } catch (error) {
+
+    msg(
+      "chapterActionMessage",
+      "Gagal menyimpan: " +
+      (
+        error.message ||
+        error
+      )
+    );
+
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+    }
+  }
+}
+
+
+// =====================================================
+// HAPUS BAB
+// =====================================================
+
+async function hapusBab(id) {
+
+  const chapter =
+    chapterData.find(
+      bab =>
+        String(bab.id) ===
+        String(id)
+    );
+
+
+  if (!chapter) {
+    return;
+  }
+
+
+  const yakin =
+    confirm(
+      `Hapus Bab ${chapter.nomor_bab}?\n\n` +
+      `Bab yang sudah dihapus tidak dapat dipulihkan.`
+    );
+
 
   if (!yakin) {
     return;
   }
 
+
   try {
 
-    const { error } =
+    const {
+      error
+    } =
       await supabase
         .from("novel_bab")
         .delete()
@@ -870,97 +1804,96 @@ async function hapusBab(id) {
           currentUser.id
         );
 
+
     if (error) {
-      throw error;
+
+      alert(
+        "Gagal menghapus bab:\n\n" +
+        error.message
+      );
+
+      return;
     }
 
-    /*
-      Hitung ulang bab terakhir
-      setelah penghapusan.
-    */
 
-    const { data: babTerakhir } =
-      await supabase
-        .from("novel_bab")
-        .select(
-          "nomor_bab"
-        )
-        .eq(
-          "novel_id",
-          currentNovel.id
-        )
-        .eq(
-          "user_id",
-          currentUser.id
-        )
-        .order(
-          "nomor_bab",
-          {
-            ascending: false
-          }
-        )
-        .limit(1);
+    const sisaBab =
+      chapterData.filter(
+        bab =>
+          String(bab.id) !==
+          String(id)
+      );
 
-    const babSelesai =
-      babTerakhir &&
-      babTerakhir.length
-        ? Number(
-            babTerakhir[0]
-              .nomor_bab
-          )
-        : 0;
 
-    const { data: novelBaru,
-            error: novelError } =
-      await supabase
-        .from("novel")
-        .update({
-          bab_selesai:
-            babSelesai,
+    let babTertinggi = 0;
 
-          updated_at:
-            new Date()
-              .toISOString()
-        })
-        .eq(
-          "id",
-          currentNovel.id
-        )
-        .eq(
-          "user_id",
-          currentUser.id
-        )
-        .select()
-        .single();
 
-    if (novelError) {
-      throw novelError;
-    }
+    sisaBab.forEach(
+      bab => {
 
-    currentNovel =
-      novelBaru;
+        const nomor =
+          Number(
+            bab.nomor_bab
+          ) || 0;
 
-    msg(
-      "chapterMessage",
-      "Bab berhasil dihapus."
+
+        if (
+          nomor >
+          babTertinggi
+        ) {
+
+          babTertinggi =
+            nomor;
+
+        }
+
+      }
     );
 
-    await bukaNovel(
-      currentNovel.id
-    );
+
+    await supabase
+      .from("novel")
+      .update({
+
+        bab_selesai:
+          babTertinggi,
+
+        updated_at:
+          new Date().toISOString()
+
+      })
+      .eq(
+        "id",
+        currentNovel.id
+      )
+      .eq(
+        "user_id",
+        currentUser.id
+      );
+
+
+    currentNovel.bab_selesai =
+      babTertinggi;
+
+
+    await muatBab();
 
     await muatBeranda();
 
+
+    if (el("detailInfo")) {
+
+      el("detailInfo").textContent =
+        `${currentNovel.genre || "Drama"} · ` +
+        `${currentNovel.gaya || "Natural"} · ` +
+        `${currentNovel.nuansa || "Emosional"} · ` +
+        `Bab ${currentNovel.bab_selesai || 0}`;
+
+    }
+
   } catch (error) {
 
-    console.error(
-      "Hapus bab error:",
-      error
-    );
-
-    msg(
-      "chapterMessage",
-      "Gagal menghapus bab: " +
+    alert(
+      "Gagal menghapus bab:\n\n" +
       (
         error.message ||
         error
@@ -969,11 +1902,13 @@ async function hapusBab(id) {
   }
 }
 
-/* =====================================================
-   TULIS BAB BERIKUTNYA
-===================================================== */
+
+// =====================================================
+// TULIS BAB BERIKUTNYA
+// =====================================================
 
 async function tulisBab() {
+
   if (!currentNovel) {
 
     msg(
@@ -984,17 +1919,21 @@ async function tulisBab() {
     return;
   }
 
+
   const button =
     el("writeNextChapter");
+
 
   if (button) {
     button.disabled = true;
   }
 
+
   msg(
     "chapterMessage",
     "PENA AI sedang menulis bab berikutnya..."
   );
+
 
   try {
 
@@ -1003,32 +1942,42 @@ async function tulisBab() {
     } =
       await supabase.auth.getSession();
 
+
     const token =
       data.session?.access_token;
 
+
     if (!token) {
+
       throw new Error(
         "Sesi login sudah berakhir."
       );
+
     }
+
 
     const response =
       await fetch(
         WORKER_URL,
         {
+
           method:
             "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+          headers:
+            {
 
-            "Authorization":
-              `Bearer ${token}`
-          },
+              "Content-Type":
+                "application/json",
+
+              "Authorization":
+                `Bearer ${token}`
+
+            },
 
           body:
             JSON.stringify({
+
               action:
                 "write_chapter",
 
@@ -1036,12 +1985,16 @@ async function tulisBab() {
                 Number(
                   currentNovel.id
                 )
+
             })
+
         }
       );
 
+
     let result =
       null;
+
 
     try {
 
@@ -1053,7 +2006,9 @@ async function tulisBab() {
       throw new Error(
         `Backend mengirim response tidak valid. Status server: ${response.status}`
       );
+
     }
+
 
     if (
       !response.ok ||
@@ -1064,17 +2019,20 @@ async function tulisBab() {
         result?.error ||
         `Gagal menulis bab. Status server: ${response.status}`
       );
+
     }
+
 
     msg(
       "chapterMessage",
-      result.message ||
       `Bab ${result.nomor_bab || ""} berhasil ditulis dan disimpan.`
     );
+
 
     await bukaNovel(
       currentNovel.id
     );
+
 
     await muatBeranda();
 
@@ -1084,6 +2042,7 @@ async function tulisBab() {
       "PENA AI chapter error:",
       error
     );
+
 
     msg(
       "chapterMessage",
@@ -1096,14 +2055,17 @@ async function tulisBab() {
     if (button) {
       button.disabled = false;
     }
+
   }
 }
 
-/* =====================================================
-   KARAKTER
-===================================================== */
+
+// =====================================================
+// KARAKTER
+// =====================================================
 
 async function muatKarakter() {
+
   if (
     !currentNovel ||
     !currentUser
@@ -1111,12 +2073,20 @@ async function muatKarakter() {
     return;
   }
 
+
   const box =
     el("characterList");
 
-  if (!box) return;
 
-  const { data, error } =
+  if (!box) {
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } =
     await supabase
       .from("novel_karakter")
       .select("*")
@@ -1135,12 +2105,15 @@ async function muatKarakter() {
         }
       );
 
+
   if (error) {
 
     box.innerHTML = `
       <div class="card">
 
-        Gagal memuat karakter.<br><br>
+        Gagal memuat karakter.
+
+        <br><br>
 
         ${escapeHTML(
           error.message
@@ -1151,6 +2124,7 @@ async function muatKarakter() {
 
     return;
   }
+
 
   if (
     !data ||
@@ -1166,52 +2140,64 @@ async function muatKarakter() {
     return;
   }
 
+
   box.innerHTML =
-    data.map(c => `
-      <div class="card">
+    data.map(c => {
 
-        <h3>
-          ${escapeHTML(
-            c.nama
-          )}
-        </h3>
+      return `
 
-        ${
-          c.umur
-            ? `<p>Umur: ${c.umur}</p>`
-            : ""
-        }
+        <div class="card">
 
-        ${
-          c.peran
-            ? `<p>${escapeHTML(
-                c.peran
-              )}</p>`
-            : ""
-        }
+          <h3>
+            ${escapeHTML(
+              c.nama
+            )}
+          </h3>
 
-        ${
-          c.sifat
-            ? `<p>${escapeHTML(
-                c.sifat
-              )}</p>`
-            : ""
-        }
+          ${
+            c.umur
+              ? `<p>Umur: ${c.umur}</p>`
+              : ""
+          }
 
-        ${
-          c.latar_belakang
-            ? `<p>${escapeHTML(
-                c.latar_belakang
-              )}</p>`
-            : ""
-        }
+          ${
+            c.peran
+              ? `<p>${escapeHTML(
+                  c.peran
+                )}</p>`
+              : ""
+          }
 
-      </div>
-    `)
-    .join("");
+          ${
+            c.sifat
+              ? `<p>${escapeHTML(
+                  c.sifat
+                )}</p>`
+              : ""
+          }
+
+          ${
+            c.latar_belakang
+              ? `<p>${escapeHTML(
+                  c.latar_belakang
+                )}</p>`
+              : ""
+          }
+
+        </div>
+
+      `;
+
+    }).join("");
 }
 
+
+// =====================================================
+// SIMPAN KARAKTER
+// =====================================================
+
 async function simpanKarakter() {
+
   if (
     !currentNovel ||
     !currentUser
@@ -1219,11 +2205,11 @@ async function simpanKarakter() {
     return;
   }
 
+
   const nama =
-    el("charName")
-      ?.value
-      .trim() ||
+    el("charName")?.value.trim() ||
     "";
+
 
   if (!nama) {
 
@@ -1235,26 +2221,31 @@ async function simpanKarakter() {
     return;
   }
 
+
   const button =
     el("addCharacterBtn");
+
 
   if (button) {
     button.disabled = true;
   }
+
 
   msg(
     "characterMessage",
     "Menyimpan karakter..."
   );
 
+
   try {
 
-    const { error } =
+    const {
+      error
+    } =
       await supabase
-        .from(
-          "novel_karakter"
-        )
+        .from("novel_karakter")
         .insert({
+
           novel_id:
             currentNovel.id,
 
@@ -1266,31 +2257,24 @@ async function simpanKarakter() {
           umur:
             el("charAge")?.value
               ? Number(
-                  el("charAge")
-                    .value
+                  el("charAge").value
                 )
               : null,
 
           peran:
-            el("charRole")
-              ?.value
-              .trim() ||
+            el("charRole")?.value.trim() ||
             "",
 
           sifat:
-            el("charTrait")
-              ?.value
-              .trim() ||
+            el("charTrait")?.value.trim() ||
             "",
 
           latar_belakang:
-            el(
-              "charBackground"
-            )
-              ?.value
-              .trim() ||
+            el("charBackground")?.value.trim() ||
             ""
+
         });
+
 
     if (error) {
 
@@ -1303,6 +2287,7 @@ async function simpanKarakter() {
       return;
     }
 
+
     [
       "charName",
       "charAge",
@@ -1313,16 +2298,17 @@ async function simpanKarakter() {
       .forEach(id => {
 
         if (el(id)) {
-          el(id).value =
-            "";
+          el(id).value = "";
         }
 
       });
+
 
     msg(
       "characterMessage",
       "Karakter berhasil disimpan."
     );
+
 
     await muatKarakter();
 
@@ -1342,44 +2328,65 @@ async function simpanKarakter() {
     if (button) {
       button.disabled = false;
     }
+
   }
 }
 
-/* =====================================================
-   GAYA NOVEL
-===================================================== */
+
+// =====================================================
+// GAYA NOVEL
+// =====================================================
 
 function muatGaya() {
+
   if (!currentNovel) {
     return;
   }
 
+
   if (el("styleGenre")) {
+
     el("styleGenre").value =
       currentNovel.genre ||
       "Drama";
+
   }
 
+
   if (el("styleWriting")) {
+
     el("styleWriting").value =
       currentNovel.gaya ||
       "Natural";
+
   }
 
+
   if (el("styleMood")) {
+
     el("styleMood").value =
       currentNovel.nuansa ||
       "Emosional";
+
   }
 
+
   if (el("styleMode")) {
+
     el("styleMode").value =
       currentNovel.mode ||
       "Normal";
+
   }
 }
 
+
+// =====================================================
+// SIMPAN GAYA
+// =====================================================
+
 async function simpanGaya() {
+
   if (
     !currentNovel ||
     !currentUser
@@ -1387,44 +2394,44 @@ async function simpanGaya() {
     return;
   }
 
+
   const button =
     el("saveStyleBtn");
 
+
   if (button) {
-    button.disabled =
-      true;
+    button.disabled = true;
   }
+
 
   try {
 
-    const { data, error } =
+    const {
+      data,
+      error
+    } =
       await supabase
         .from("novel")
         .update({
 
           genre:
-            el("styleGenre")
-              ?.value ||
+            el("styleGenre")?.value ||
             "Drama",
 
           gaya:
-            el("styleWriting")
-              ?.value ||
+            el("styleWriting")?.value ||
             "Natural",
 
           nuansa:
-            el("styleMood")
-              ?.value ||
+            el("styleMood")?.value ||
             "Emosional",
 
           mode:
-            el("styleMode")
-              ?.value ||
+            el("styleMode")?.value ||
             "Normal",
 
           updated_at:
-            new Date()
-              .toISOString()
+            new Date().toISOString()
 
         })
         .eq(
@@ -1438,6 +2445,7 @@ async function simpanGaya() {
         .select()
         .single();
 
+
     if (error) {
 
       msg(
@@ -1449,19 +2457,21 @@ async function simpanGaya() {
       return;
     }
 
+
     currentNovel =
       data;
 
+
     if (el("detailInfo")) {
 
-      el("detailInfo")
-        .textContent =
+      el("detailInfo").textContent =
         `${data.genre || "Drama"} · ` +
         `${data.gaya || "Natural"} · ` +
         `${data.nuansa || "Emosional"} · ` +
         `Bab ${data.bab_selesai || 0}`;
 
     }
+
 
     msg(
       "styleMessage",
@@ -1482,31 +2492,23 @@ async function simpanGaya() {
   } finally {
 
     if (button) {
-      button.disabled =
-        false;
+      button.disabled = false;
     }
+
   }
 }
 
-/* =====================================================
-   AI WRITER
-===================================================== */
 
-/*
-  Fungsi lama tulisCepat tetap dipertahankan
-  sebagai mesin dasar.
-
-  Nanti UI "Tulis Cepat" akan kita pindahkan
-  ke AI Writer tanpa perlu membuang backend
-  action "write".
-*/
+// =====================================================
+// AI WRITER
+// =====================================================
 
 async function tulisCepat() {
+
   const promptText =
-    el("prompt")
-      ?.value
-      .trim() ||
+    el("prompt")?.value.trim() ||
     "";
+
 
   if (!promptText) {
 
@@ -1518,26 +2520,31 @@ async function tulisCepat() {
     return;
   }
 
+
   const button =
     el("writeBtn");
 
+
   if (button) {
-    button.disabled =
-      true;
+    button.disabled = true;
   }
+
 
   msg(
     "writeMessage",
     "PENA AI sedang menulis..."
   );
 
+
   try {
 
     const {
       data,
-      error: sessionError
+      error:
+        sessionError
     } =
       await supabase.auth.getSession();
+
 
     if (sessionError) {
       throw new Error(
@@ -1545,88 +2552,84 @@ async function tulisCepat() {
       );
     }
 
+
     const token =
-      data.session
-        ?.access_token;
+      data.session?.access_token;
+
 
     if (!token) {
+
       throw new Error(
         "Silakan login kembali."
       );
+
     }
 
-    /*
-      Jika sedang membuka novel,
-      kita kirim konteks novel.
-    */
-
-    const body = {
-      action:
-        "write",
-
-      judul:
-        el("title")
-          ?.value
-          .trim() ||
-        (
-          currentNovel?.judul ||
-          "Tulisan Baru"
-        ),
-
-      prompt:
-        promptText,
-
-      jenis:
-        "Novel"
-    };
-
-    if (currentNovel) {
-
-      body.novel_id =
-        Number(
-          currentNovel.id
-        );
-
-      body.genre =
-        currentNovel.genre ||
-        "";
-
-      body.gaya =
-        currentNovel.gaya ||
-        "";
-
-      body.nuansa =
-        currentNovel.nuansa ||
-        "";
-
-      body.premis =
-        currentNovel.premis ||
-        "";
-    }
 
     const response =
       await fetch(
         WORKER_URL,
         {
+
           method:
             "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+          headers:
+            {
 
-            "Authorization":
-              `Bearer ${token}`
-          },
+              "Content-Type":
+                "application/json",
+
+              "Authorization":
+                `Bearer ${token}`
+
+            },
 
           body:
-            JSON.stringify(
-              body
-            )
+            JSON.stringify({
+
+              action:
+                "write",
+
+              novel_id:
+                currentNovel?.id ||
+                null,
+
+              judul:
+                el("title")?.value.trim() ||
+                currentNovel?.judul ||
+                "Tulisan Baru",
+
+              prompt:
+                promptText,
+
+              jenis:
+                "Novel",
+
+              genre:
+                currentNovel?.genre ||
+                "",
+
+              gaya:
+                currentNovel?.gaya ||
+                "",
+
+              nuansa:
+                currentNovel?.nuansa ||
+                "",
+
+              premis:
+                currentNovel?.premis ||
+                ""
+
+            })
+
         }
       );
 
+
     let result;
+
 
     try {
 
@@ -1638,7 +2641,9 @@ async function tulisCepat() {
       throw new Error(
         `Backend mengirim response yang tidak valid. Status server: ${response.status}`
       );
+
     }
+
 
     if (
       !response.ok ||
@@ -1651,13 +2656,16 @@ async function tulisCepat() {
         result?.message ||
         `Gagal membuat tulisan. Status server: ${response.status}`
       );
+
     }
+
 
     const hasilTulisan =
       result.hasil_tulisan ||
       result.text ||
       result.content ||
       "";
+
 
     if (
       !String(
@@ -1668,17 +2676,21 @@ async function tulisCepat() {
       throw new Error(
         "AI berhasil merespons, tetapi hasil tulisan kosong."
       );
+
     }
 
+
     if (el("result")) {
-      el("result")
-        .textContent =
+
+      el("result").textContent =
         hasilTulisan;
+
     }
+
 
     msg(
       "writeMessage",
-      "Tulisan berhasil dibuat."
+      "Tulisan berhasil dibuat dan disimpan."
     );
 
   } catch (error) {
@@ -1687,6 +2699,7 @@ async function tulisCepat() {
       "PENA AI error:",
       error
     );
+
 
     msg(
       "writeMessage",
@@ -1697,22 +2710,23 @@ async function tulisCepat() {
   } finally {
 
     if (button) {
-      button.disabled =
-        false;
+      button.disabled = false;
     }
+
   }
 }
 
-/* =====================================================
-   COPY HASIL AI
-===================================================== */
+
+// =====================================================
+// COPY HASIL AI
+// =====================================================
 
 async function copyResult() {
+
   const text =
-    el("result")
-      ?.textContent
-      .trim() ||
+    el("result")?.textContent.trim() ||
     "";
+
 
   if (!text) {
 
@@ -1724,10 +2738,13 @@ async function copyResult() {
     return;
   }
 
+
   try {
 
-    await navigator.clipboard
-      .writeText(text);
+    await navigator.clipboard.writeText(
+      text
+    );
+
 
     msg(
       "writeMessage",
@@ -1740,49 +2757,14 @@ async function copyResult() {
       "writeMessage",
       "Gagal menyalin tulisan."
     );
-  }
-}
-
-/* =====================================================
-   AI WRITER - BUKA KONTEKS
-===================================================== */
-
-function bukaAIWriter() {
-  bukaHalaman(
-    "writePage"
-  );
-
-  /*
-    Jika sedang berada di dalam
-    sebuah novel, tampilkan konteksnya.
-  */
-
-  if (currentNovel) {
-
-    if (el("title")) {
-      el("title").value =
-        currentNovel.judul ||
-        "";
-    }
-
-    const context =
-      el("writerContext");
-
-    if (context) {
-
-      context.textContent =
-        `Novel aktif: ${currentNovel.judul || "-"} · ` +
-        `${currentNovel.genre || "Drama"} · ` +
-        `Bab ${currentNovel.bab_selesai || 0}`;
-
-    }
 
   }
 }
 
-/* =====================================================
-   PASANG EVENT
-===================================================== */
+
+// =====================================================
+// EVENT
+// =====================================================
 
 function pasangEvent() {
 
@@ -1820,25 +2802,27 @@ function pasangEvent() {
 
   };
 
-  Object.entries(
-    events
-  ).forEach(
-    ([id, handler]) => {
 
-      const node =
-        el(id);
+  Object.entries(events)
+    .forEach(
+      ([id, handler]) => {
 
-      if (node) {
-        node.onclick =
-          handler;
+        const node =
+          el(id);
+
+
+        if (node) {
+          node.onclick =
+            handler;
+        }
+
       }
+    );
 
-    }
-  );
 
-  /*
-    Menu utama.
-  */
+  // ===================================================
+  // MENU UTAMA
+  // ===================================================
 
   document
     .querySelectorAll(
@@ -1852,14 +2836,11 @@ function pasangEvent() {
           const page =
             btn.dataset.page;
 
-          /*
-            Kalau menu lama masih bernama
-            writePage, kita arahkan ke AI Writer.
-          */
 
           bukaHalaman(
             page
           );
+
 
           if (
             page ===
@@ -1870,6 +2851,7 @@ function pasangEvent() {
 
           }
 
+
           if (
             page ===
             "novelPage"
@@ -1879,22 +2861,14 @@ function pasangEvent() {
 
           }
 
-          if (
-            page ===
-            "writePage"
-          ) {
-
-            bukaAIWriter();
-
-          }
-
         };
 
     });
 
-  /*
-    Tab detail novel.
-  */
+
+  // ===================================================
+  // TAB DETAIL NOVEL
+  // ===================================================
 
   document
     .querySelectorAll(
@@ -1916,42 +2890,45 @@ function pasangEvent() {
 
             });
 
+
           document
             .querySelectorAll(
               ".detailTab"
             )
             .forEach(x => {
 
-              x.classList
-                .remove(
-                  "active"
-                );
+              x.classList.remove(
+                "active"
+              );
 
             });
+
 
           const target =
             el(
               btn.dataset.detail
             );
 
+
           if (target) {
             target.hidden =
               false;
           }
 
-          btn.classList
-            .add(
-              "active"
-            );
+
+          btn.classList.add(
+            "active"
+          );
 
         };
 
     });
 }
 
-/* =====================================================
-   START
-===================================================== */
+
+// =====================================================
+// MULAI APLIKASI
+// =====================================================
 
 async function mulai() {
 
@@ -1959,12 +2936,13 @@ async function mulai() {
 
     pasangEvent();
 
+
     const {
       data,
       error
     } =
-      await supabase.auth
-        .getSession();
+      await supabase.auth.getSession();
+
 
     if (error) {
 
@@ -1978,14 +2956,18 @@ async function mulai() {
       return;
     }
 
+
     if (data.session) {
 
       currentUser =
         data.session.user;
 
+
       tampilkanStudio();
 
+
       await muatBeranda();
+
       await muatNovel();
 
     } else {
@@ -2005,6 +2987,11 @@ async function mulai() {
   }
 }
 
+
+// =====================================================
+// START
+// =====================================================
+
 if (
   document.readyState ===
   "loading"
@@ -2021,9 +3008,10 @@ if (
 
 }
 
-/* =====================================================
-   GLOBAL
-===================================================== */
+
+// =====================================================
+// GLOBAL
+// =====================================================
 
 window.bukaNovel =
   bukaNovel;
@@ -2036,6 +3024,3 @@ window.tulisCepat =
 
 window.tulisBab =
   tulisBab;
-
-window.bukaAIWriter =
-  bukaAIWriter;
