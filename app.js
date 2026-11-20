@@ -1,15 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = "https://qyeiwnwekqwhxwwbwyfq.supabase.co";
-const SUPABASE_KEY = "sb_publishable_fjFOriVPPgI6_pFhIAurCw_jNwuX_kj";
+const SUPABASE_URL =
+  "https://qyeiwnwekqwhxwwbwyfq.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_fjFOriVPPgI6_pFhIAurCw_jNwuX_kj";
 
 const WORKER_URL =
   "https://pena-ai-backend-groq.wismakeluarga789.workers.dev";
 
-const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+const supabase =
+  createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
 
 let currentUser = null;
 let currentNovel = null;
@@ -23,15 +27,21 @@ function el(id) {
   return document.getElementById(id);
 }
 
+
 function msg(id, text) {
-  const x = el(id);
+
+  const x =
+    el(id);
 
   if (x) {
-    x.textContent = text || "";
+    x.textContent =
+      text || "";
   }
 }
 
+
 function escapeHTML(text = "") {
+
   return String(text)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -40,17 +50,22 @@ function escapeHTML(text = "") {
     .replaceAll("'", "&#039;");
 }
 
-function tanggal(value) {
-  if (!value) return "-";
 
-  return new Date(value).toLocaleDateString(
-    "id-ID",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }
-  );
+function tanggal(value) {
+
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value)
+    .toLocaleDateString(
+      "id-ID",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }
+    );
 }
 
 
@@ -59,43 +74,64 @@ function tanggal(value) {
 ===================================================== */
 
 function tampilkanStudio() {
-  const auth = el("authSection");
-  const studio = el("studioSection");
+
+  const auth =
+    el("authSection");
+
+  const studio =
+    el("studioSection");
 
   if (auth) {
-    auth.hidden = true;
+    auth.hidden =
+      true;
   }
 
   if (studio) {
-    studio.hidden = false;
+    studio.hidden =
+      false;
   }
 }
+
 
 function tampilkanLogin() {
-  const auth = el("authSection");
-  const studio = el("studioSection");
+
+  const auth =
+    el("authSection");
+
+  const studio =
+    el("studioSection");
 
   if (auth) {
-    auth.hidden = false;
+    auth.hidden =
+      false;
   }
 
   if (studio) {
-    studio.hidden = true;
+    studio.hidden =
+      true;
   }
 }
+
 
 function bukaHalaman(id) {
 
   document
     .querySelectorAll(".page")
     .forEach(page => {
-      page.hidden = true;
+
+      page.hidden =
+        true;
+
     });
 
-  const page = el(id);
+  const page =
+    el(id);
 
   if (page) {
-    page.hidden = false;
+
+    page.hidden =
+      false;
+
   }
 
   document
@@ -123,10 +159,12 @@ async function login() {
   );
 
   const email =
-    el("email")?.value.trim() || "";
+    el("email")?.value.trim() ||
+    "";
 
   const password =
-    el("password")?.value || "";
+    el("password")?.value ||
+    "";
 
   if (!email || !password) {
 
@@ -145,8 +183,10 @@ async function login() {
       error
     } =
       await supabase.auth.signInWithPassword({
+
         email,
         password
+
       });
 
     if (error) {
@@ -191,10 +231,12 @@ async function daftar() {
   );
 
   const email =
-    el("email")?.value.trim() || "";
+    el("email")?.value.trim() ||
+    "";
 
   const password =
-    el("password")?.value || "";
+    el("password")?.value ||
+    "";
 
   if (!email || !password) {
 
@@ -222,8 +264,10 @@ async function daftar() {
       error
     } =
       await supabase.auth.signUp({
+
         email,
         password
+
       });
 
     if (error) {
@@ -260,16 +304,23 @@ async function daftar() {
 async function logout() {
 
   try {
+
     await supabase.auth.signOut();
+
   } catch (error) {
+
     console.error(
       "Logout error:",
       error
     );
+
   }
 
-  currentUser = null;
-  currentNovel = null;
+  currentUser =
+    null;
+
+  currentNovel =
+    null;
 
   tampilkanLogin();
 }
@@ -281,7 +332,9 @@ async function logout() {
 
 async function muatBeranda() {
 
-  if (!currentUser) return;
+  if (!currentUser) {
+    return;
+  }
 
   const novelCount =
     await supabase
@@ -343,7 +396,11 @@ async function buatNovel() {
       "Judul novel:"
     );
 
-  if (!judul || !judul.trim()) {
+  if (
+    !judul ||
+    !judul.trim()
+  ) {
+
     return;
   }
 
@@ -351,13 +408,15 @@ async function buatNovel() {
     window.prompt(
       "Genre novel:",
       "Drama"
-    ) || "Drama";
+    ) ||
+    "Drama";
 
   const premis =
     window.prompt(
       "Premis singkat cerita:",
       ""
-    ) || "";
+    ) ||
+    "";
 
   try {
 
@@ -426,7 +485,10 @@ async function buatNovel() {
 
     alert(
       "Gagal membuat novel:\n\n" +
-      (error.message || error)
+      (
+        error.message ||
+        error
+      )
     );
   }
 }
@@ -438,12 +500,16 @@ async function buatNovel() {
 
 async function muatNovel() {
 
-  if (!currentUser) return;
+  if (!currentUser) {
+    return;
+  }
 
   const box =
     el("novelList");
 
-  if (!box) return;
+  if (!box) {
+    return;
+  }
 
   box.innerHTML =
     `<div class="card">Memuat novel...</div>`;
@@ -471,14 +537,19 @@ async function muatNovel() {
     box.innerHTML = `
       <div class="card">
         Gagal memuat novel.<br><br>
-        ${escapeHTML(error.message)}
+        ${escapeHTML(
+          error.message
+        )}
       </div>
     `;
 
     return;
   }
 
-  if (!data || data.length === 0) {
+  if (
+    !data ||
+    data.length === 0
+  ) {
 
     box.innerHTML = `
       <div class="card">
@@ -504,8 +575,10 @@ async function muatNovel() {
       el("emptyCreateNovel");
 
     if (emptyButton) {
+
       emptyButton.onclick =
         buatNovel;
+
     }
 
     return;
@@ -554,16 +627,19 @@ async function muatNovel() {
     }).join("");
 
   document
-    .querySelectorAll(".openNovelButton")
+    .querySelectorAll(
+      ".openNovelButton"
+    )
     .forEach(button => {
 
-      button.onclick = () => {
+      button.onclick =
+        () => {
 
-        bukaNovel(
-          button.dataset.id
-        );
+          bukaNovel(
+            button.dataset.id
+          );
 
-      };
+        };
 
     });
 }
@@ -575,7 +651,9 @@ async function muatNovel() {
 
 async function bukaNovel(id) {
 
-  if (!currentUser) return;
+  if (!currentUser) {
+    return;
+  }
 
   const {
     data,
@@ -610,7 +688,8 @@ async function bukaNovel(id) {
   if (el("detailTitle")) {
 
     el("detailTitle").textContent =
-      data.judul || "-";
+      data.judul ||
+      "-";
 
   }
 
@@ -649,12 +728,16 @@ async function bukaNovel(id) {
 
 async function muatBab() {
 
-  if (!currentNovel) return;
+  if (!currentNovel) {
+    return;
+  }
 
   const box =
     el("chapterList");
 
-  if (!box) return;
+  if (!box) {
+    return;
+  }
 
   box.innerHTML =
     `<div class="card">Memuat bab...</div>`;
@@ -695,7 +778,10 @@ async function muatBab() {
     return;
   }
 
-  if (!data || data.length === 0) {
+  if (
+    !data ||
+    data.length === 0
+  ) {
 
     box.innerHTML = `
       <div class="card">
@@ -723,6 +809,7 @@ async function muatBab() {
 
           <h3>
             Bab ${bab.nomor_bab}
+
             ${
               bab.judul_bab
                 ? " — " +
@@ -731,6 +818,7 @@ async function muatBab() {
                   )
                 : ""
             }
+
           </h3>
 
           <p>
@@ -740,12 +828,14 @@ async function muatBab() {
           </p>
 
           <div class="chapter-text">
+
             ${escapeHTML(
               bab.isi_bab || ""
             ).replace(
               /\n/g,
               "<br><br>"
             )}
+
           </div>
 
         </article>
@@ -775,7 +865,8 @@ async function tulisBab() {
     el("writeNextChapter");
 
   if (button) {
-    button.disabled = true;
+    button.disabled =
+      true;
   }
 
   msg(
@@ -814,14 +905,18 @@ async function tulisBab() {
       await fetch(
         WORKER_URL,
         {
-          method: "POST",
+
+          method:
+            "POST",
 
           headers: {
+
             "Content-Type":
               "application/json",
 
             "Authorization":
               `Bearer ${token}`
+
           },
 
           body:
@@ -836,22 +931,31 @@ async function tulisBab() {
                 )
 
             })
+
         }
       );
 
-    /*
-      RESPONSE BODY DIBACA SATU KALI.
-    */
-
     const raw =
       await response.text();
+
+    console.log(
+      "PENA AI CHAPTER HTTP STATUS:",
+      response.status
+    );
+
+    console.log(
+      "PENA AI CHAPTER RAW RESPONSE:",
+      raw
+    );
 
     let result;
 
     try {
 
       result =
-        JSON.parse(raw);
+        JSON.parse(
+          raw
+        );
 
     } catch {
 
@@ -902,7 +1006,8 @@ async function tulisBab() {
   } finally {
 
     if (button) {
-      button.disabled = false;
+      button.disabled =
+        false;
     }
 
   }
@@ -915,12 +1020,16 @@ async function tulisBab() {
 
 async function muatKarakter() {
 
-  if (!currentNovel) return;
+  if (!currentNovel) {
+    return;
+  }
 
   const box =
     el("characterList");
 
-  if (!box) return;
+  if (!box) {
+    return;
+  }
 
   const {
     data,
@@ -958,7 +1067,10 @@ async function muatKarakter() {
     return;
   }
 
-  if (!data || data.length === 0) {
+  if (
+    !data ||
+    data.length === 0
+  ) {
 
     box.innerHTML = `
       <div class="card">
@@ -1024,10 +1136,13 @@ async function muatKarakter() {
 
 async function simpanKarakter() {
 
-  if (!currentNovel) return;
+  if (!currentNovel) {
+    return;
+  }
 
   const nama =
-    el("charName")?.value.trim() || "";
+    el("charName")?.value.trim() ||
+    "";
 
   if (!nama) {
 
@@ -1043,7 +1158,8 @@ async function simpanKarakter() {
     el("addCharacterBtn");
 
   if (button) {
-    button.disabled = true;
+    button.disabled =
+      true;
   }
 
   msg(
@@ -1076,13 +1192,16 @@ async function simpanKarakter() {
               : null,
 
           peran:
-            el("charRole")?.value.trim() || "",
+            el("charRole")?.value.trim() ||
+            "",
 
           sifat:
-            el("charTrait")?.value.trim() || "",
+            el("charTrait")?.value.trim() ||
+            "",
 
           latar_belakang:
-            el("charBackground")?.value.trim() || ""
+            el("charBackground")?.value.trim() ||
+            ""
 
         });
 
@@ -1106,7 +1225,8 @@ async function simpanKarakter() {
     ].forEach(id => {
 
       if (el(id)) {
-        el(id).value = "";
+        el(id).value =
+          "";
       }
 
     });
@@ -1123,13 +1243,17 @@ async function simpanKarakter() {
     msg(
       "characterMessage",
       "Gagal menyimpan karakter: " +
-      (error.message || error)
+      (
+        error.message ||
+        error
+      )
     );
 
   } finally {
 
     if (button) {
-      button.disabled = false;
+      button.disabled =
+        false;
     }
 
   }
@@ -1142,7 +1266,9 @@ async function simpanKarakter() {
 
 function muatGaya() {
 
-  if (!currentNovel) return;
+  if (!currentNovel) {
+    return;
+  }
 
   if (el("styleGenre")) {
 
@@ -1180,13 +1306,16 @@ function muatGaya() {
 
 async function simpanGaya() {
 
-  if (!currentNovel) return;
+  if (!currentNovel) {
+    return;
+  }
 
   const button =
     el("saveStyleBtn");
 
   if (button) {
-    button.disabled = true;
+    button.disabled =
+      true;
   }
 
   try {
@@ -1264,13 +1393,17 @@ async function simpanGaya() {
     msg(
       "styleMessage",
       "Gagal menyimpan gaya: " +
-      (error.message || error)
+      (
+        error.message ||
+        error
+      )
     );
 
   } finally {
 
     if (button) {
-      button.disabled = false;
+      button.disabled =
+        false;
     }
 
   }
@@ -1284,7 +1417,8 @@ async function simpanGaya() {
 async function tulisCepat() {
 
   const promptText =
-    el("prompt")?.value.trim() || "";
+    el("prompt")?.value.trim() ||
+    "";
 
   if (!promptText) {
 
@@ -1300,7 +1434,8 @@ async function tulisCepat() {
     el("writeBtn");
 
   if (button) {
-    button.disabled = true;
+    button.disabled =
+      true;
   }
 
   msg(
@@ -1311,7 +1446,7 @@ async function tulisCepat() {
   try {
 
     /* =================================================
-       AMBIL SESSION LOGIN
+       SESSION LOGIN
     ================================================= */
 
     const {
@@ -1341,14 +1476,16 @@ async function tulisCepat() {
 
 
     /* =================================================
-       KIRIM KE CLOUDFLARE WORKER
+       KIRIM KE WORKER
     ================================================= */
 
     const response =
       await fetch(
         WORKER_URL,
         {
-          method: "POST",
+
+          method:
+            "POST",
 
           headers: {
 
@@ -1383,35 +1520,41 @@ async function tulisCepat() {
 
 
     /* =================================================
-       PENTING:
-       BODY RESPONSE DIBACA SATU KALI SAJA
-
-       Kita gunakan response.text() lalu
-       JSON.parse() sendiri supaya kalau Worker
-       mengirim error HTML/plain text, kita bisa
-       melihat pesan yang sebenarnya.
+       BACA RESPONSE SATU KALI
     ================================================= */
 
     const raw =
       await response.text();
+
+    console.log(
+      "PENA AI HTTP STATUS:",
+      response.status
+    );
+
+    console.log(
+      "PENA AI RAW RESPONSE:",
+      raw
+    );
+
+
+    /* =================================================
+       PARSE JSON
+    ================================================= */
 
     let result;
 
     try {
 
       result =
-        JSON.parse(raw);
+        JSON.parse(
+          raw
+        );
 
-    } catch (parseError) {
-
-      console.error(
-        "Raw backend response:",
-        raw
-      );
+    } catch {
 
       throw new Error(
         raw
-          ? `Backend mengirim response tidak valid (${response.status}): ${raw.slice(0, 300)}`
+          ? `Backend mengirim response tidak valid (${response.status}): ${raw.slice(0, 500)}`
           : `Backend mengirim response kosong. Status server: ${response.status}`
       );
 
@@ -1419,7 +1562,7 @@ async function tulisCepat() {
 
 
     /* =================================================
-       CEK RESPONSE
+       CEK STATUS
     ================================================= */
 
     if (
@@ -1448,6 +1591,10 @@ async function tulisCepat() {
       "";
 
 
+    /* =================================================
+       HASIL KOSONG
+    ================================================= */
+
     if (
       !String(
         hasilTulisan
@@ -1468,26 +1615,29 @@ async function tulisCepat() {
     const resultBox =
       el("result");
 
-    if (resultBox) {
+    if (!resultBox) {
 
-      resultBox.textContent =
-        hasilTulisan;
-
-      resultBox.style.display =
-        "block";
+      throw new Error(
+        "Elemen hasil tulisan (#result) tidak ditemukan di halaman."
+      );
 
     }
 
+    resultBox.textContent =
+      hasilTulisan;
+
+    resultBox.style.display =
+      "block";
+
 
     /* =================================================
-       PESAN SUKSES
+       SUKSES
     ================================================= */
 
     msg(
       "writeMessage",
       "Tulisan berhasil dibuat dan disimpan."
     );
-
 
   } catch (error) {
 
@@ -1502,26 +1652,26 @@ async function tulisCepat() {
       "Terjadi kesalahan saat membuat tulisan."
     );
 
-
   } finally {
 
     if (button) {
-      button.disabled = false;
+      button.disabled =
+        false;
     }
 
   }
-
 }
 
 
 /* =====================================================
-   COPY
+   COPY HASIL
 ===================================================== */
 
 async function copyResult() {
 
   const text =
-    el("result")?.textContent.trim() || "";
+    el("result")?.textContent.trim() ||
+    "";
 
   if (!text) {
 
@@ -1569,6 +1719,7 @@ function pasangEvent() {
       login;
   }
 
+
   const signupBtn =
     el("signupBtn");
 
@@ -1576,6 +1727,7 @@ function pasangEvent() {
     signupBtn.onclick =
       daftar;
   }
+
 
   const logoutBtn =
     el("logoutBtn");
@@ -1585,6 +1737,7 @@ function pasangEvent() {
       logout;
   }
 
+
   const newNovelBtn =
     el("newNovelBtn");
 
@@ -1592,6 +1745,7 @@ function pasangEvent() {
     newNovelBtn.onclick =
       buatNovel;
   }
+
 
   const newNovelFromHome =
     el("newNovelFromHome");
@@ -1601,6 +1755,7 @@ function pasangEvent() {
       buatNovel;
   }
 
+
   const writeNextChapter =
     el("writeNextChapter");
 
@@ -1608,6 +1763,7 @@ function pasangEvent() {
     writeNextChapter.onclick =
       tulisBab;
   }
+
 
   const addCharacterBtn =
     el("addCharacterBtn");
@@ -1617,6 +1773,7 @@ function pasangEvent() {
       simpanKarakter;
   }
 
+
   const saveStyleBtn =
     el("saveStyleBtn");
 
@@ -1624,6 +1781,7 @@ function pasangEvent() {
     saveStyleBtn.onclick =
       simpanGaya;
   }
+
 
   const writeBtn =
     el("writeBtn");
@@ -1633,14 +1791,25 @@ function pasangEvent() {
       tulisCepat;
   }
 
-  const copyResult =
+
+  /* =================================================
+     COPY BUTTON
+  ================================================= */
+
+  const copyResultButton =
     el("copyResult");
 
-  if (copyResult) {
-    copyResult.onclick =
+  if (copyResultButton) {
+
+    copyResultButton.onclick =
       copyResult;
+
   }
 
+
+  /* =================================================
+     MENU
+  ================================================= */
 
   document
     .querySelectorAll(".menuBtn")
@@ -1679,6 +1848,10 @@ function pasangEvent() {
     });
 
 
+  /* =================================================
+     DETAIL TAB
+  ================================================= */
+
   document
     .querySelectorAll(".detailTab")
     .forEach(btn => {
@@ -1697,6 +1870,7 @@ function pasangEvent() {
 
             });
 
+
           document
             .querySelectorAll(
               ".detailTab"
@@ -1708,6 +1882,7 @@ function pasangEvent() {
               );
 
             });
+
 
           const target =
             el(
@@ -1791,7 +1966,7 @@ async function mulai() {
 
 
 /* =====================================================
-   JALANKAN SETELAH HTML SELESAI
+   JALANKAN
 ===================================================== */
 
 if (
