@@ -156,6 +156,7 @@
         <div class="subnav">
           <button class="detailTab active" data-detail="chapterSection">▤ Bab</button>
           <button class="detailTab" data-detail="characterSection">♙ Karakter</button>
+          <button class="detailTab" data-detail="storyBibleSection">📚 Story Bible</button>
           <button class="detailTab" data-detail="styleSection">✦ Gaya</button>
         </div>
         <section id="chapterSection" class="detailContent">
@@ -163,15 +164,101 @@
           <div id="chapterList" class="chapter-list"></div>
         </section>
         <section id="characterSection" class="detailContent" hidden>
-          <div class="card"><span class="eyebrow">CHARACTER BUILDER</span><h2>Ciptakan karakter</h2><p class="muted">Tokoh yang kuat membuat cerita terasa hidup.</p>
-            <label for="charName">Nama karakter</label><input id="charName" placeholder="Nama karakter">
-            <label for="charAge">Umur</label><input id="charAge" type="number" min="1" placeholder="Umur karakter">
-            <label for="charRole">Peran dalam cerita</label><input id="charRole" placeholder="Contoh: tokoh utama, sahabat, antagonis">
-            <label for="charTrait">Sifat dan karakter</label><textarea id="charTrait" placeholder="Jelaskan sifat, kebiasaan, dan kepribadiannya"></textarea>
-            <label for="charBackground">Latar belakang</label><textarea id="charBackground" placeholder="Ceritakan masa lalu dan latar belakangnya"></textarea>
-            <button id="addCharacterBtn" class="primary-btn">＋ Simpan Karakter</button><p id="characterMessage" class="message"></p>
+          <div class="card">
+            <span class="eyebrow">CHARACTER BUILDER</span>
+            <h2>Profil karakter lengkap</h2>
+            <p class="muted">Simpan sifat, latar belakang, tujuan, hubungan, dan rahasia setiap tokoh. Profil ini menjadi acuan kontinuitas saat AI menulis bab berikutnya.</p>
+            <div class="story-form-grid">
+              <div>
+                <label for="charName">Nama karakter *</label><input id="charName" placeholder="Nama karakter">
+              </div>
+              <div>
+                <label for="charAge">Umur</label><input id="charAge" type="number" min="1" placeholder="Umur karakter">
+              </div>
+              <div class="story-form-wide">
+                <label for="charRole">Peran dalam cerita</label><input id="charRole" placeholder="Contoh: tokoh utama, sahabat, antagonis">
+              </div>
+              <div class="story-form-wide">
+                <label for="charTrait">Sifat dan karakter</label><textarea id="charTrait" rows="3" placeholder="Kepribadian, kebiasaan, cara bicara, ketakutan, kekuatan, kelemahan..."></textarea>
+              </div>
+              <div class="story-form-wide">
+                <label for="charBackground">Latar belakang</label><textarea id="charBackground" rows="3" placeholder="Masa lalu, keluarga, pendidikan, pengalaman penting..."></textarea>
+              </div>
+              <div class="story-form-wide">
+                <label for="charRelationship">Hubungan dengan tokoh lain</label><textarea id="charRelationship" rows="2" placeholder="Contoh: adik kandung Nara; diam-diam memusuhi Arman..."></textarea>
+              </div>
+              <div>
+                <label for="charGoal">Tujuan / motivasi</label><textarea id="charGoal" rows="2" placeholder="Apa yang paling diinginkan tokoh ini?"></textarea>
+              </div>
+              <div>
+                <label for="charSecret">Rahasia</label><textarea id="charSecret" rows="2" placeholder="Rahasia yang belum boleh terungkap..."></textarea>
+              </div>
+              <div class="story-form-wide">
+                <label for="charNotes">Catatan kontinuitas tokoh</label><textarea id="charNotes" rows="2" placeholder="Fakta penting yang tidak boleh berubah tentang tokoh ini..."></textarea>
+              </div>
+            </div>
+            <div class="story-action-row">
+              <button id="addCharacterBtn" class="primary-btn">＋ Simpan Karakter</button>
+              <button id="cancelCharacterEditBtn" class="outline-btn" hidden>Batal Edit</button>
+            </div>
+            <p id="characterMessage" class="message" aria-live="polite"></p>
           </div>
           <div id="characterList" class="character-list"></div>
+        </section>
+
+        <section id="storyBibleSection" class="detailContent" hidden>
+          <div class="card story-bible-intro">
+            <span class="eyebrow">STORY BIBLE & CONTINUITY ENGINE</span>
+            <h2>Alkitab cerita novelmu</h2>
+            <p class="muted">Catat fakta resmi dunia cerita, aturan, lokasi, hubungan, kronologi, dan rahasia. PENA AI membaca catatan ini saat menulis bab berikutnya melalui panggilan AI yang sama—tanpa panggilan AI tambahan.</p>
+            <div class="story-bible-status"><span class="status-dot"></span><span id="storyBibleStatus" aria-live="polite">Memuat data Story Bible...</span></div>
+          </div>
+
+          <div class="story-bible-grid">
+            <article class="card story-bible-card">
+              <div class="story-card-heading"><span>01</span><div><h3>Dunia cerita</h3><p>Fondasi, latar zaman, budaya, teknologi, dan suasana dunia.</p></div></div>
+              <label for="bibleWorld">Deskripsi dunia</label>
+              <textarea id="bibleWorld" rows="5" placeholder="Jelaskan dunia tempat cerita berlangsung, era, masyarakat, kondisi sosial, teknologi, budaya, dan hal khas lainnya..."></textarea>
+              <label for="bibleRules">Aturan dunia yang wajib dipatuhi</label>
+              <textarea id="bibleRules" rows="4" placeholder="Contoh: kemampuan tertentu memiliki batas; perjalanan membutuhkan waktu; hukum kerajaan melarang..."></textarea>
+            </article>
+
+            <article class="card story-bible-card">
+              <div class="story-card-heading"><span>02</span><div><h3>Tempat & kelompok</h3><p>Lokasi, kerajaan, perguruan, organisasi, keluarga besar, atau faksi.</p></div></div>
+              <label for="bibleLocations">Lokasi penting</label>
+              <textarea id="bibleLocations" rows="5" placeholder="Satu lokasi per baris. Contoh: Kota Aruna — kota pelabuhan yang selalu berkabut; Rumah tua — berada di tepi sungai..."></textarea>
+              <label for="bibleFactions">Kelompok / organisasi / perguruan</label>
+              <textarea id="bibleFactions" rows="4" placeholder="Satu kelompok per baris, sertakan tujuan, pemimpin, wilayah, dan ciri khasnya..."></textarea>
+            </article>
+
+            <article class="card story-bible-card">
+              <div class="story-card-heading"><span>03</span><div><h3>Relasi & rahasia</h3><p>Jaga hubungan antartokoh dan misteri yang belum waktunya terungkap.</p></div></div>
+              <label for="bibleRelationships">Peta hubungan antartokoh</label>
+              <textarea id="bibleRelationships" rows="5" placeholder="Contoh: Nara dan Bima — sahabat sejak kecil, tetapi Nara belum tahu Bima menyimpan surat itu..."></textarea>
+              <label for="bibleSecrets">Rahasia / misteri yang belum terungkap</label>
+              <textarea id="bibleSecrets" rows="4" placeholder="Catat rahasia dan siapa yang mengetahuinya. Tandai kapan rahasia boleh mulai dibuka agar AI tidak membocorkannya terlalu cepat..."></textarea>
+            </article>
+
+            <article class="card story-bible-card">
+              <div class="story-card-heading"><span>04</span><div><h3>Kronologi & fakta kanon</h3><p>Urutan kejadian dan fakta resmi yang tidak boleh bertentangan.</p></div></div>
+              <label for="bibleTimeline">Kronologi peristiwa</label>
+              <textarea id="bibleTimeline" rows="5" placeholder="Satu peristiwa per baris. Contoh: Bab 1 — Nara tiba di kota; Tiga hari kemudian — surat ditemukan; Tahun 2018 — peristiwa masa lalu..."></textarea>
+              <label for="bibleCanonFacts">Fakta kanon / fakta yang tidak boleh berubah</label>
+              <textarea id="bibleCanonFacts" rows="4" placeholder="Tuliskan fakta yang sudah pasti benar dalam novel: usia, tanggal, benda, luka, janji, siapa mengetahui apa, dan sebagainya..."></textarea>
+            </article>
+
+            <article class="card story-bible-card story-bible-card-wide">
+              <div class="story-card-heading"><span>05</span><div><h3>Catatan editor kontinuitas</h3><p>Hal-hal yang harus diingat ketika cerita berkembang dari satu bab ke bab berikutnya.</p></div></div>
+              <label for="bibleContinuityNotes">Catatan kontinuitas & arah cerita</label>
+              <textarea id="bibleContinuityNotes" rows="5" placeholder="Contoh: tokoh utama belum mengetahui identitas pengirim surat; konflik keluarga belum boleh selesai; luka di tangan kiri belum sembuh; hubungan keduanya masih canggung..."></textarea>
+            </article>
+          </div>
+
+          <div class="card story-bible-savebar">
+            <div><strong>Simpan Story Bible</strong><p class="muted">Data tersimpan khusus untuk novel ini dan akan menjadi konteks penulisan bab selanjutnya.</p></div>
+            <button id="saveStoryBibleBtn" class="primary-btn">💾 Simpan Story Bible</button>
+            <p id="storyBibleMessage" class="message" aria-live="polite"></p>
+          </div>
         </section>
         <section id="styleSection" class="detailContent" hidden>
           <div class="card"><span class="eyebrow">WRITING PERSONALITY</span><h2>Atur gaya penulisan</h2><p class="muted">Tentukan karakter bahasa dan suasana novelmu.</p>
