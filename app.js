@@ -1096,44 +1096,48 @@ async function muatNovel() {
   box.innerHTML =
     data.map(novel => {
 
+      const novelTitle =
+        novel.judul || "Novel tanpa judul";
+
       return `
 
-        <div class="card">
+        <article class="card novel-card">
 
-          <h3>
-            ${escapeHTML(
-              novel.judul
-            )}
-          </h3>
+          <div class="novel-card-copy">
+            <h3>
+              ${escapeHTML(novelTitle)}
+            </h3>
 
-          <p>
-            ${escapeHTML(
-              novel.genre ||
-              "Drama"
-            )}
+            <p class="novel-card-meta">
+              ${escapeHTML(novel.genre || "Drama")}
+              ·
+              ${escapeHTML(novel.gaya || "Natural")}
+              ·
+              ${escapeHTML(novel.nuansa || "Emosional")}
+            </p>
 
-            ·
+            <p class="novel-card-count">
+              ${Number(novel.bab_selesai) || 0} bab tersimpan
+            </p>
+          </div>
 
-            ${escapeHTML(
-              novel.gaya ||
-              "Natural"
-            )}
-          </p>
+          <div class="novel-card-actions">
+            <button
+              class="openNovelButton primary-btn"
+              data-id="${escapeHTML(String(novel.id))}">
+              Buka Novel
+            </button>
 
-          <p>
-            Bab
-            ${novel.bab_selesai || 0}
-          </p>
+            <button
+              class="deleteNovelButton danger-btn"
+              data-id="${escapeHTML(String(novel.id))}"
+              data-title="${escapeHTML(novelTitle)}"
+              aria-label="Hapus novel ${escapeHTML(novelTitle)}">
+              🗑 Hapus Novel
+            </button>
+          </div>
 
-          <button
-            class="openNovelButton"
-            data-id="${novel.id}">
-
-            Buka Novel
-
-          </button>
-
-        </div>
+        </article>
       `;
     })
     .join("");
@@ -1152,6 +1156,99 @@ async function muatNovel() {
           );
 
     });
+
+
+  document
+    .querySelectorAll(
+      ".deleteNovelButton"
+    )
+    .forEach(button => {
+
+      button.onclick =
+        () =>
+          hapusNovel(
+            button.dataset.id,
+            button.dataset.title,
+            button
+          );
+
+    });
+}
+
+
+// =====================================================
+// HAPUS NOVEL BESERTA SELURUH ISINYA
+// =====================================================
+
+async function hapusNovel(novelId, novelTitle = "Novel ini", triggerButton = null) {
+
+  if (!currentUser || !novelId) {
+    alert("Sesi login tidak valid. Silakan login kembali.");
+    return;
+  }
+
+  const title = String(novelTitle || "Novel tanpa judul");
+  const confirmed = window.confirm(
+    `Yakin ingin menghapus novel "${title}"?\n\n` +
+    "Semua bab, profil karakter, dan Story Bible milik novel ini akan dihapus permanen.\n" +
+    "Tindakan ini tidak dapat dibatalkan."
+  );
+
+  if (!confirmed) return;
+
+  const originalButtonText = triggerButton?.textContent || "🗑 Hapus Novel";
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.textContent = "Menghapus...";
+  }
+
+  try {
+    // RPC ini menjalankan penghapusan dalam satu transaksi database.
+    // Jika salah satu langkah gagal, seluruh penghapusan dibatalkan.
+    const { data, error } = await supabase.rpc(
+      "delete_user_novel",
+      { p_novel_id: Number(novelId) }
+    );
+
+    if (error) {
+      throw new Error(error.message || "Database menolak penghapusan novel.");
+    }
+
+    if (data !== true) {
+      throw new Error("Novel tidak ditemukan atau bukan milik akun yang sedang login.");
+    }
+
+    if (String(currentNovel?.id) === String(novelId)) {
+      currentNovel = null;
+      chapterData = [];
+      currentChapterIndex = -1;
+      chapterSearchText = "";
+      characterRecords = [];
+      storyBibleRecord = null;
+    }
+
+    await Promise.all([
+      muatNovel(),
+      muatBeranda()
+    ]);
+
+    alert(
+      `Novel "${title}" berhasil dihapus beserta semua bab, profil karakter, dan Story Bible-nya.`
+    );
+
+  } catch (error) {
+    console.error("Gagal menghapus novel:", error);
+    alert(
+      "Novel belum berhasil dihapus. Tidak ada perubahan sebagian karena proses dijalankan dalam satu transaksi.\n\n" +
+      (error.message || String(error)) +
+      "\n\nPastikan SQL penghapusan novel sudah dijalankan di Supabase."
+    );
+  } finally {
+    if (triggerButton && document.body.contains(triggerButton)) {
+      triggerButton.disabled = false;
+      triggerButton.textContent = originalButtonText;
+    }
+  }
 }
 
 
