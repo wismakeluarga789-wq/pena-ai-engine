@@ -278,3 +278,35 @@ textarea{resize:vertical;line-height:1.7}select{appearance:auto}
   position: relative;
   z-index: 2;
 }
+
+
+/* STORY BIBLE & CONTINUITY ENGINE */
+.story-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+.story-form-wide{grid-column:1/-1}
+.story-action-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.character-card-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.character-card-actions button{padding:9px 13px;font-size:11px}
+.danger-btn{color:#ffc5cb;border:1px solid rgba(230,90,115,.45);background:rgba(180,45,70,.13);border-radius:10px;padding:10px 14px;font-weight:700}
+.story-bible-intro{margin-bottom:16px;background:radial-gradient(circle at 95% 8%,rgba(219,75,166,.22),transparent 36%),linear-gradient(145deg,#302039,#1a1323)}
+.story-bible-intro h2{font:700 28px "Playfair Display",Georgia,serif;margin:8px 0}
+.story-bible-status{display:flex;align-items:center;gap:9px;margin-top:15px;color:#f4c5e1;font-size:12px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#8ee6b8;box-shadow:0 0 12px rgba(142,230,184,.55)}
+.story-bible-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.story-bible-card{min-width:0}
+.story-bible-card h3{margin:0 0 4px;font-size:18px}
+.story-bible-card p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+.story-card-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.story-card-heading>span{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:11px;background:#cb4e9d25;border:1px solid #cb4e9d55;color:#ff9bd3;font-size:11px;font-weight:800}
+.story-bible-card textarea{min-height:100px}
+.story-bible-card-wide{grid-column:1/-1}
+.story-bible-savebar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:16px}
+.story-bible-savebar>div p{margin:5px 0 0;font-size:11px}
+.story-bible-savebar .message{grid-column:1/-1}
+@media(max-width:760px){
+  .story-form-grid,.story-bible-grid{grid-template-columns:1fr}
+  .story-form-wide,.story-bible-card-wide{grid-column:auto}
+  .story-bible-savebar{grid-template-columns:1fr}
+  .story-bible-savebar button{width:100%}
+  .detailTab{white-space:nowrap}
+  .subnav{overflow-x:auto}
+}
