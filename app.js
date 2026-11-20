@@ -115,6 +115,444 @@ function scrollKeAtas() {
 
 
 // =====================================================
+// NOVEL EXPORT CENTER
+// =====================================================
+
+function namaFileAman(value) {
+  return String(value || "pena-ai")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "pena-ai";
+}
+
+
+function unduhBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+
+function ambilDataEkspor(scope) {
+  if (!currentNovel) {
+    throw new Error("Novel belum dibuka.");
+  }
+
+  let chapters = [];
+
+  if (scope === "current") {
+    const current = chapterData[currentChapterIndex];
+    if (!current) {
+      throw new Error("Bab yang sedang dibuka tidak ditemukan.");
+    }
+    chapters = [current];
+  } else {
+    chapters = [...chapterData].sort(
+      (a, b) => Number(a.nomor_bab || 0) - Number(b.nomor_bab || 0)
+    );
+  }
+
+  if (!chapters.length) {
+    throw new Error("Belum ada bab yang dapat diekspor.");
+  }
+
+  const invalid = chapters.filter(chapter => {
+    const content = String(chapter.isi_bab || "").trim();
+    return !content || /^(?:\.{2,}|…+|kosong)$/i.test(content);
+  });
+
+  if (invalid.length) {
+    const numbers = invalid.map(chapter => `Bab ${chapter.nomor_bab}`).join(", ");
+    throw new Error(`Ekspor dihentikan karena isi ${numbers} kosong atau hanya placeholder. Lengkapi bab tersebut terlebih dahulu.`);
+  }
+
+  return chapters;
+}
+
+
+function buatTeksNovel(chapters, authorName, isWholeNovel) {
+  const novelTitle = currentNovel?.judul || "Novel Tanpa Judul";
+  const lines = [
+    novelTitle,
+    authorName ? `Penulis: ${authorName}` : "Naskah dibuat dengan PENA AI",
+    currentNovel?.genre ? `Genre: ${currentNovel.genre}` : "",
+    "",
+  ];
+
+  if (isWholeNovel) {
+    lines.push("DAFTAR ISI", "");
+    chapters.forEach(chapter => {
+      lines.push(`Bab ${chapter.nomor_bab} — ${chapter.judul_bab || "Tanpa Judul"}`);
+    });
+    lines.push("", "============================================================", "");
+  }
+
+  chapters.forEach((chapter, index) => {
+    if (index > 0 || isWholeNovel) {
+      lines.push("", "============================================================", "");
+    }
+    lines.push(`BAB ${chapter.nomor_bab}`, chapter.judul_bab || "Tanpa Judul", "");
+    lines.push(String(chapter.isi_bab || "").trim(), "");
+  });
+
+  return lines.join("\n");
+}
+
+
+function buatParagrafNovel(text) {
+  return String(text || "")
+    .replace(/\r/g, "")
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
+
+async function eksporWord(chapters, authorName, isWholeNovel) {
+  // Library DOCX dimuat hanya ketika penulis memilih format Word.
+  const docx = await import("https://esm.sh/docx@9.15.4");
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    HeadingLevel,
+    AlignmentType,
+    Footer,
+    PageNumber,
+    PageBreak
+  } = docx;
+
+  const novelTitle = currentNovel?.judul || "Novel Tanpa Judul";
+  const children = [];
+
+  // Sampul
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 2300, after: 260 },
+      children: [new TextRun({ text: "PENA AI  ·  NOVEL STUDIO", bold: true, color: "8B5A91", size: 20, font: "Georgia" })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 800, after: 420 },
+      children: [new TextRun({ text: novelTitle, bold: true, size: 44, font: "Georgia", color: "25152B" })]
+    })
+  );
+
+  if (!isWholeNovel && chapters[0]) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 180 },
+      children: [new TextRun({ text: `Bab ${chapters[0].nomor_bab} — ${chapters[0].judul_bab || "Tanpa Judul"}`, size: 26, font: "Georgia", color: "76527B" })]
+    }));
+  }
+
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 260, after: 140 },
+      children: [new TextRun({ text: authorName || "Naskah dari PENA AI", size: 24, font: "Georgia", color: "555555" })]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 100, after: 120 },
+      children: [new TextRun({ text: [currentNovel?.genre, currentNovel?.nuansa].filter(Boolean).join(" · "), size: 20, color: "777777" })]
+    }),
+    new Paragraph({ children: [new PageBreak()] })
+  );
+
+  // Daftar isi statis agar langsung terlihat saat dokumen dibuka.
+  if (isWholeNovel) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 320 },
+      children: [new TextRun({ text: "DAFTAR ISI", bold: true, size: 30, font: "Georgia" })]
+    }));
+
+    chapters.forEach(chapter => {
+      children.push(new Paragraph({
+        spacing: { after: 150 },
+        children: [new TextRun({ text: `Bab ${chapter.nomor_bab}  —  ${chapter.judul_bab || "Tanpa Judul"}`, size: 23, font: "Times New Roman" })]
+      }));
+    });
+
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+  }
+
+  chapters.forEach((chapter, index) => {
+    children.push(new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      pageBreakBefore: index > 0,
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 180, after: 120 },
+      children: [new TextRun({ text: `BAB ${chapter.nomor_bab}`, bold: true, size: 22, font: "Georgia", color: "76527B" })]
+    }));
+
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      keepNext: true,
+      spacing: { after: 360 },
+      children: [new TextRun({ text: chapter.judul_bab || "Tanpa Judul", bold: true, size: 32, font: "Georgia", color: "25152B" })]
+    }));
+
+    buatParagrafNovel(chapter.isi_bab).forEach(paragraph => {
+      children.push(new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        indent: { firstLine: 360 },
+        spacing: { after: 130, line: 360 },
+        children: [new TextRun({ text: paragraph, size: 24, font: "Times New Roman" })]
+      }));
+    });
+  });
+
+  const footer = new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({ text: "PENA AI  ·  Halaman ", size: 18, color: "777777" }),
+          PageNumber.CURRENT
+        ]
+      })
+    ]
+  });
+
+  const document = new Document({
+    creator: "PENA AI",
+    title: novelTitle,
+    description: "Naskah novel diekspor dari PENA AI Novel Studio.",
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440, footer: 720 }
+        }
+      },
+      footers: { default: footer },
+      children
+    }]
+  });
+
+  const blob = await Packer.toBlob(document);
+  const suffix = isWholeNovel ? "lengkap" : `bab-${chapters[0].nomor_bab}`;
+  unduhBlob(blob, `${namaFileAman(novelTitle)}-${suffix}.docx`);
+}
+
+
+function bukaPdfCetak(chapters, authorName, isWholeNovel, printWindow) {
+  const novelTitle = currentNovel?.judul || "Novel Tanpa Judul";
+  const escape = value => escapeHTML(String(value ?? ""));
+
+  const toc = isWholeNovel
+    ? `<section class="contents"><h2>Daftar Isi</h2><ol>${chapters.map(chapter => `<li>Bab ${escape(chapter.nomor_bab)} — ${escape(chapter.judul_bab || "Tanpa Judul")}</li>`).join("")}</ol></section>`
+    : "";
+
+  const chapterMarkup = chapters.map(chapter => {
+    const paragraphs = buatParagrafNovel(chapter.isi_bab)
+      .map(paragraph => `<p>${escape(paragraph)}</p>`)
+      .join("");
+    return `<section class="chapter"><div class="chapter-number">BAB ${escape(chapter.nomor_bab)}</div><h1>${escape(chapter.judul_bab || "Tanpa Judul")}</h1>${paragraphs}</section>`;
+  }).join("");
+
+  const html = `<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escape(novelTitle)}</title>
+<style>
+@page { size: A4; margin: 23mm 22mm 22mm; @bottom-center { content: counter(page); font: 9pt Georgia,serif; color: #777; } }
+* { box-sizing: border-box; }
+body { margin: 0; color: #19151b; background: #fff; font-family: "Times New Roman",serif; font-size: 11.5pt; line-height: 1.75; }
+.cover { min-height: 245mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; page-break-after: always; break-after: page; }
+.brand { color: #81518c; font: bold 10pt Georgia,serif; letter-spacing: 2px; margin-bottom: 35mm; }
+.cover h1 { max-width: 100%; margin: 0 0 14mm; font: bold 30pt Georgia,serif; line-height: 1.25; }
+.cover .subtitle { margin: 0 0 5mm; color: #76527b; font: 13pt Georgia,serif; }
+.cover .author { margin-top: 16mm; color: #555; font: 12pt Georgia,serif; }
+.cover .meta { margin-top: 5mm; color: #777; font: 10pt Georgia,serif; }
+.contents { page-break-after: always; break-after: page; }
+.contents h2 { text-align: center; font: bold 19pt Georgia,serif; margin: 0 0 13mm; }
+.contents ol { padding-left: 9mm; }
+.contents li { margin: 0 0 5mm; }
+.chapter { page-break-before: always; break-before: page; }
+.chapter-number { margin: 0 0 5mm; text-align: center; font: bold 10pt Georgia,serif; letter-spacing: 1.8px; color: #76527b; }
+.chapter h1 { margin: 0 0 12mm; text-align: center; font: bold 20pt Georgia,serif; line-height: 1.35; page-break-after: avoid; break-after: avoid; }
+p { margin: 0 0 3.5mm; text-align: justify; text-indent: 1.1cm; orphans: 3; widows: 3; }
+@media screen { body { max-width: 210mm; margin: 12mm auto; padding: 18mm 22mm; box-shadow: 0 2px 24px #0002; } .cover { min-height: 245mm; } }
+</style>
+</head>
+<body>
+<section class="cover"><div class="brand">PENA AI · NOVEL STUDIO</div><h1>${escape(novelTitle)}</h1>${!isWholeNovel && chapters[0] ? `<div class="subtitle">Bab ${escape(chapters[0].nomor_bab)} — ${escape(chapters[0].judul_bab || "Tanpa Judul")}</div>` : ""}<div class="author">${escape(authorName || "Naskah dari PENA AI")}</div><div class="meta">${escape([currentNovel?.genre, currentNovel?.nuansa].filter(Boolean).join(" · "))}</div></section>
+${toc}${chapterMarkup}
+</body>
+</html>`;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.document.title = `${novelTitle} - PENA AI`;
+  setTimeout(() => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } catch (error) {
+      console.error("Gagal membuka dialog cetak PDF:", error);
+    }
+  }, 900);
+}
+
+
+function pasangStyleEkspor() {
+  if (el("penaExportStyles")) return;
+
+  const style = document.createElement("style");
+  style.id = "penaExportStyles";
+  style.textContent = `
+    .pena-export-overlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(8,4,12,.78);backdrop-filter:blur(7px)}
+    .pena-export-card{width:min(100%,520px);max-height:calc(100vh - 36px);overflow:auto;padding:26px;border:1px solid rgba(218,158,221,.28);border-radius:20px;background:linear-gradient(145deg,#291833,#170f20);box-shadow:0 24px 90px #0009;color:#fff}
+    .pena-export-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .pena-export-head h2{margin:5px 0 6px;font:700 25px Georgia,serif}
+    .pena-export-head p{margin:0;color:#c7b4cb;font-size:12px;line-height:1.6}
+    .pena-export-close{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;border-radius:9px;padding:8px 11px;font-size:18px;cursor:pointer}
+    .pena-export-card label{margin:15px 0 7px}
+    .pena-export-card select,.pena-export-card input{width:100%;box-sizing:border-box;background:#130b1a;color:#fff;border:1px solid #624767;border-radius:10px;padding:12px;font-size:13px}
+    .pena-export-note{margin-top:14px;padding:12px 14px;border-radius:11px;background:rgba(255,255,255,.055);color:#cdbbd1;font-size:11px;line-height:1.6}
+    .pena-export-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:20px}
+    .pena-export-actions button{padding:11px 16px;border-radius:10px;cursor:pointer}
+    .pena-export-cancel{background:transparent;border:1px solid rgba(255,255,255,.2);color:#eadbea}
+    .pena-export-start{background:linear-gradient(110deg,#c53691,#7545a8);border:0;color:#fff;font-weight:700}
+    .pena-export-start:disabled{opacity:.55;cursor:wait}
+    .pena-export-message{min-height:18px;margin:12px 0 0;color:#ffd0e9;font-size:12px;line-height:1.5}
+    @media(max-width:560px){.pena-export-card{padding:20px}.pena-export-head h2{font-size:21px}}
+  `;
+  document.head.appendChild(style);
+}
+
+
+function bukaModalEkspor() {
+  if (!currentNovel || !chapterData.length) {
+    alert("Belum ada bab yang dapat diekspor.");
+    return;
+  }
+
+  pasangStyleEkspor();
+  const oldModal = el("penaExportOverlay");
+  if (oldModal) oldModal.remove();
+
+  const current = chapterData[currentChapterIndex];
+  const overlay = document.createElement("div");
+  overlay.id = "penaExportOverlay";
+  overlay.className = "pena-export-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-labelledby", "penaExportTitle");
+  overlay.innerHTML = `
+    <div class="pena-export-card">
+      <div class="pena-export-head">
+        <div>
+          <span class="eyebrow">PENA AI · PUBLISHING TOOLS</span>
+          <h2 id="penaExportTitle">Novel Export Center</h2>
+          <p>Siapkan naskahmu untuk disimpan, diedit, atau dicetak.</p>
+        </div>
+        <button type="button" class="pena-export-close" id="penaExportCloseTop" aria-label="Tutup">×</button>
+      </div>
+
+      <label for="penaExportScope">Materi yang diekspor</label>
+      <select id="penaExportScope">
+        <option value="all">Seluruh novel (${chapterData.length} bab)</option>
+        <option value="current">Bab yang sedang dibuka${current ? ` — Bab ${escapeHTML(current.nomor_bab)}` : ""}</option>
+      </select>
+
+      <label for="penaExportFormat">Format file</label>
+      <select id="penaExportFormat">
+        <option value="docx">Microsoft Word (.docx) — bisa diedit</option>
+        <option value="pdf">PDF (.pdf) — melalui dialog Simpan sebagai PDF</option>
+        <option value="txt">Teks (.txt) — paling ringan</option>
+      </select>
+
+      <label for="penaExportAuthor">Nama penulis (opsional)</label>
+      <input id="penaExportAuthor" type="text" maxlength="100" placeholder="Masukkan nama penulis untuk sampul">
+
+      <div class="pena-export-note">
+        Word dan PDF dilengkapi sampul. Ekspor seluruh novel juga menyertakan daftar isi dan pemisah halaman setiap bab. Ekspor berjalan dari data yang sudah tersimpan; tidak memakai kuota AI.
+      </div>
+      <p id="penaExportMessage" class="pena-export-message" aria-live="polite"></p>
+      <div class="pena-export-actions">
+        <button type="button" class="pena-export-cancel" id="penaExportCancel">Batal</button>
+        <button type="button" class="pena-export-start" id="penaExportStart">Siapkan File ↓</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  el("penaExportCloseTop").onclick = close;
+  el("penaExportCancel").onclick = close;
+  overlay.addEventListener("click", event => {
+    if (event.target === overlay) close();
+  });
+
+  el("penaExportStart").onclick = async () => {
+    const startButton = el("penaExportStart");
+    const message = el("penaExportMessage");
+    const scope = el("penaExportScope").value;
+    const format = el("penaExportFormat").value;
+    const authorName = el("penaExportAuthor").value.trim();
+    let printWindow = null;
+
+    try {
+      const chapters = ambilDataEkspor(scope);
+      const isWholeNovel = scope === "all";
+
+      if (format === "pdf") {
+        // Jendela dibuka langsung dari klik pengguna agar tidak diblokir browser.
+        printWindow = window.open("about:blank", "_blank");
+        if (!printWindow) {
+          throw new Error("Browser memblokir jendela PDF. Izinkan pop-up untuk situs PENA AI, lalu coba lagi.");
+        }
+      }
+
+      startButton.disabled = true;
+      startButton.textContent = "Menyiapkan...";
+      message.textContent = format === "docx"
+        ? "Menyusun dokumen Word..."
+        : format === "pdf"
+          ? "Menyiapkan halaman cetak PDF..."
+          : "Menyiapkan file teks...";
+
+      if (format === "docx") {
+        await eksporWord(chapters, authorName, isWholeNovel);
+      } else if (format === "pdf") {
+        bukaPdfCetak(chapters, authorName, isWholeNovel, printWindow);
+      } else {
+        const content = buatTeksNovel(chapters, authorName, isWholeNovel);
+        const blob = new Blob(["\uFEFF", content], { type: "text/plain;charset=utf-8" });
+        const suffix = isWholeNovel ? "lengkap" : `bab-${chapters[0].nomor_bab}`;
+        unduhBlob(blob, `${namaFileAman(currentNovel?.judul)}-${suffix}.txt`);
+      }
+
+      close();
+    } catch (error) {
+      if (printWindow && !printWindow.closed) printWindow.close();
+      message.textContent = error?.message || "Ekspor gagal. Silakan coba kembali.";
+      startButton.disabled = false;
+      startButton.textContent = "Coba Lagi ↓";
+    }
+  };
+}
+
+
+// =====================================================
 // LOGIN / STUDIO
 // =====================================================
 
@@ -1291,6 +1729,14 @@ function renderChapterWorkspace() {
 
 
               <button
+                id="exportNovelBtn">
+
+                📥 Ekspor
+
+              </button>
+
+
+              <button
                 id="deleteCurrentChapterBtn">
 
                 🗑️ Hapus Bab
@@ -1466,6 +1912,20 @@ function renderChapterWorkspace() {
 
       };
 
+  }
+
+
+  // ===================================================
+  // EKSPOR NOVEL
+  // ===================================================
+
+  const exportBtn =
+    el("exportNovelBtn");
+
+  if (exportBtn) {
+    exportBtn.onclick = () => {
+      bukaModalEkspor();
+    };
   }
 
 
