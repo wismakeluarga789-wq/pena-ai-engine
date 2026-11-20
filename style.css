@@ -561,3 +561,122 @@ input::placeholder,textarea::placeholder{color:#aa98b2}
   .mode-card>.mode-actions,
   .mode-card>.mode-hint{max-width:74%;}
 }
+
+
+/* =====================================================
+   PENA AI — TIGA POTRET GLAMOR PADA KARTU DASHBOARD
+   ===================================================== */
+.stats-grid .stat-with-photo{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-width:0;
+  min-height:142px;
+  display:flex;
+  align-items:stretch;
+  padding:0;
+  background:#1b1026;
+  border-color:rgba(223,157,255,.25);
+}
+.stats-grid .stat-photo{
+  position:absolute;
+  z-index:-2;
+  top:0;
+  right:0;
+  width:49%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  object-position:50% 17%;
+  opacity:.96;
+  margin:0;
+}
+.stats-grid .stat-photo-shade{
+  position:absolute;
+  z-index:-1;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(90deg,
+    rgba(24,13,34,.99) 0%,
+    rgba(24,13,34,.97) 35%,
+    rgba(24,13,34,.78) 54%,
+    rgba(24,13,34,.18) 100%);
+}
+.stats-grid .stat-content{
+  position:relative;
+  z-index:1;
+  width:100%;
+  min-width:0;
+  padding:18px 20px;
+}
+.stats-grid .stat-content .stat-icon{
+  float:none;
+  position:absolute;
+  top:16px;
+  right:15px;
+  width:34px;
+  height:34px;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.24);
+  background:rgba(112,62,157,.52);
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.stats-grid .stat-content span,
+.stats-grid .stat-content strong,
+.stats-grid .stat-content small{
+  position:relative;
+  z-index:1;
+  max-width:61%;
+  overflow-wrap:anywhere;
+  text-shadow:0 2px 8px rgba(0,0,0,.65);
+}
+.stats-grid .stat-content span{color:#fff4fc;font-size:12px;font-weight:800;padding-top:1px;}
+.stats-grid .stat-content strong{color:#fff;font-size:32px;line-height:1.05;margin:9px 0 5px;}
+.stats-grid .stat-content small{color:#f0dff0;font-size:10px;line-height:1.4;}
+.stats-grid .stat-novel{border-color:rgba(112,159,255,.4);}
+.stats-grid .stat-chapters{border-color:rgba(204,130,255,.4);}
+.stats-grid .stat-creative{border-color:rgba(245,190,111,.42);}
+.stats-grid .stat-novel .stat-photo-shade{background:linear-gradient(90deg,rgba(13,25,49,.99) 0%,rgba(13,25,49,.95) 36%,rgba(13,25,49,.72) 57%,rgba(13,25,49,.12) 100%);}
+.stats-grid .stat-chapters .stat-photo-shade{background:linear-gradient(90deg,rgba(31,15,43,.99) 0%,rgba(31,15,43,.95) 36%,rgba(31,15,43,.72) 57%,rgba(31,15,43,.12) 100%);}
+.stats-grid .stat-creative .stat-photo-shade{background:linear-gradient(90deg,rgba(36,19,36,.99) 0%,rgba(36,19,36,.95) 36%,rgba(36,19,36,.72) 57%,rgba(36,19,36,.12) 100%);}
+@media(max-width:760px){
+  .stats-grid .stat-with-photo{min-height:124px;}
+  .stats-grid .stat-content{padding:15px 16px;}
+  .stats-grid .stat-content .stat-icon{top:14px;right:13px;width:31px;height:31px;}
+  .stats-grid .stat-content span,
+  .stats-grid .stat-content strong,
+  .stats-grid .stat-content small{max-width:58%;}
+  .stats-grid .stat-photo{width:46%;object-position:50% 15%;}
+}
+@media(max-width:420px){
+  .stats-grid{grid-template-columns:1fr;gap:10px;}
+  .stats-grid .stat-with-photo{min-height:116px;}
+  .stats-grid .stat-photo{width:39%;object-position:50% 13%;}
+  .stats-grid .stat-content{padding:13px 16px;}
+  .stats-grid .stat-content .stat-icon{right:12px;top:13px;}
+  .stats-grid .stat-content span,
+  .stats-grid .stat-content strong,
+  .stats-grid .stat-content small{max-width:64%;}
+  .stats-grid .stat-content strong{font-size:28px;}
+}
+
+
+/* Dashboard MP4 backgrounds: muted, centered, and non-interactive */
+.stats-grid video.stat-photo{
+  object-fit:cover;
+  object-position:50% 22%;
+  pointer-events:none;
+  background:#160f22;
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
+}
+@media(max-width:760px){
+  .stats-grid video.stat-photo{object-position:50% 18%;}
+}
+@media(max-width:420px){
+  .stats-grid video.stat-photo{object-position:50% 16%;}
+}
+@media(prefers-reduced-motion:reduce){
+  .stats-grid video.stat-photo{visibility:hidden;}
+  .stats-grid .stat-photo-shade{background-color:rgba(20,12,30,.45);}
+}
