@@ -3353,6 +3353,65 @@ async function copyResult() {
 
 
 // =====================================================
+// PINTASAN MODE CERITA DARI DASHBOARD
+// =====================================================
+
+function bukaTabGaya() {
+  bukaHalaman("detailPage");
+
+  document.querySelectorAll(".detailContent").forEach(section => {
+    section.hidden = section.id !== "styleSection";
+  });
+
+  document.querySelectorAll(".detailTab").forEach(tab => {
+    tab.classList.toggle(
+      "active",
+      tab.dataset.detail === "styleSection"
+    );
+  });
+
+  muatGaya();
+  scrollKeAtas();
+}
+
+async function gunakanPintasanMode(modePilihan) {
+  if (!currentUser) {
+    alert("Silakan login terlebih dahulu.");
+    return;
+  }
+
+  if (!currentNovel) {
+    await muatNovel();
+    bukaHalaman("novelPage");
+    alert(
+      "Buka novel yang ingin kamu atur terlebih dahulu. Setelah masuk ke novel, kembali ke Beranda dan pilih pintasan Mode Cerita."
+    );
+    return;
+  }
+
+  bukaTabGaya();
+
+  if (modePilihan === "romansa") {
+    if (el("styleGenre")) el("styleGenre").value = "Romansa";
+    if (el("styleMood")) el("styleMood").value = "Romantis";
+    msg(
+      "styleMessage",
+      `Genre Romansa dan nuansa Romantis sudah dipilih untuk novel “${currentNovel.judul || "tanpa judul"}”. Periksa pilihan, lalu klik Simpan Gaya.`
+    );
+    return;
+  }
+
+  if (modePilihan === "dewasa") {
+    if (el("styleMode")) el("styleMode").value = "Dewasa 18+";
+    msg(
+      "styleMessage",
+      `Mode Dewasa 18+ sudah dipilih untuk novel “${currentNovel.judul || "tanpa judul"}”. Pastikan seluruh karakter romantis berusia 18 tahun ke atas, lalu klik Simpan Gaya.`
+    );
+  }
+}
+
+
+// =====================================================
 // EVENT
 // =====================================================
 
@@ -3389,6 +3448,12 @@ function pasangEvent() {
 
     saveStyleBtn:
       simpanGaya,
+
+    modeRomanceShortcut:
+      () => gunakanPintasanMode("romansa"),
+
+    modeAdultShortcut:
+      () => gunakanPintasanMode("dewasa"),
 
     writeBtn:
       tulisCepat,
@@ -3460,6 +3525,21 @@ function pasangEvent() {
         };
 
     });
+
+
+  // ===================================================
+  // PINTASAN TOMBOL DASHBOARD
+  // ===================================================
+
+  document.querySelectorAll("[data-page-jump]").forEach(button => {
+    button.onclick = async () => {
+      const page = button.dataset.pageJump;
+      bukaHalaman(page);
+      if (page === "novelPage") await muatNovel();
+      if (page === "homePage") await muatBeranda();
+      if (page === "writePage") scrollKeAtas();
+    };
+  });
 
 
   // ===================================================
