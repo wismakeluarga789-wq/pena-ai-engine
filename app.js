@@ -3021,7 +3021,35 @@ function modeEditBab() {
       textarea.focus();
     };
   }
+  // =====================================================
+  // AUTO RECOVERY DRAF LOKAL
+  // Jika draf ditemukan, tampilkan pilihan pemulihan
+  // langsung setelah editor dibuka.
+  // =====================================================
 
+  if (hasRecoverableDraft && textarea && existingDraft) {
+    const gunakanDraf = confirm(
+      `Draf lokal ditemukan dari ${formatWaktuRevisi(existingDraft.savedAt)}.\n\n` +
+      `Draf ini tersimpan di perangkat/browser ini dan berbeda dari versi cloud.\n\n` +
+      `OK = Gunakan draf lokal\n` +
+      `Batal = Tetap gunakan versi cloud`
+    );
+
+    if (gunakanDraf) {
+      textarea.value = existingDraft.text;
+
+      msg(
+        "chapterDraftStatus",
+        `Draf lokal dipulihkan dari ${formatWaktuRevisi(existingDraft.savedAt)}. Periksa tulisan lalu klik Simpan Perubahan.`
+      );
+
+      textarea.focus();
+
+      if (typeof simpanDrafBabLokal === "function") {
+        simpanDrafBabLokal(false);
+      }
+    }
+  }
   const discardBtn = el("discardLocalChapterDraftBtn");
   if (discardBtn) {
     discardBtn.onclick = () => {
