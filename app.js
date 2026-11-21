@@ -167,11 +167,12 @@ function tampilkanInfoSinkronisasi(text, type = "info", duration = 4200) {
       : "rgba(120,220,180,.48)";
   toast.style.display = "block";
 
-  if (duration > 0) {
-    realtimeToastTimer = setTimeout(() => {
-      if (toast) toast.style.display = "none";
-    }, duration);
-  }
+  // Warning/info notices must never cover the editor indefinitely.
+  // Older calls passed duration=0, which left the toast visible forever.
+  const hideAfter = Number(duration) > 0 ? Number(duration) : 8500;
+  realtimeToastTimer = setTimeout(() => {
+    if (toast) toast.style.display = "none";
+  }, hideAfter);
 }
 
 function storyBibleFormBerubah() {
@@ -331,10 +332,11 @@ async function prosesPerubahanRealtime(table, payloads) {
     if (!currentNovel || !rows.some(row => String(row.novel_id) === String(currentNovel.id))) return;
 
     if (el("chapterEditText")) {
+      simpanDrafBabLokal(false);
       tampilkanInfoSinkronisasi(
-        "Bab ini berubah di perangkat lain. Teks yang sedang kamu edit tidak ditimpa; salin drafmu sebelum memuat versi terbaru.",
+        "Bab ini berubah di perangkat lain. Teks yang sedang kamu edit tidak ditimpa; simpan draf lokal sebelum memuat versi terbaru.",
         "warning",
-        0
+        8500
       );
       msg("chapterActionMessage", "Ada perubahan bab dari perangkat lain. Simpan draf lokal terlebih dahulu; sistem akan menolak penyimpanan yang menimpa versi lebih baru.");
     } else {
@@ -422,6 +424,50 @@ async function segarkanNovelAktifDariDatabase() {
   return true;
 }
 
+async function periksaPembaruanBabSaatEditorAktif() {
+  const textarea = el("chapterEditText");
+  const chapter = chapterData[currentChapterIndex];
+  if (!textarea || !chapter || !currentNovel || !currentUser) return;
+
+  try {
+    const { data, error } = await supabase
+      .from("novel_bab")
+      .select("id, updated_at")
+      .eq("id", chapter.id)
+      .eq("novel_id", currentNovel.id)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      simpanDrafBabLokal(false);
+      tampilkanInfoSinkronisasi(
+        "Bab ini tidak ditemukan lagi di cloud. Draf pada perangkat ini tetap dipertahankan.",
+        "warning",
+        8500
+      );
+      msg("chapterActionMessage", "Bab mungkin telah dihapus dari perangkat lain. Salin draf lokal sebelum meninggalkan editor.");
+      return;
+    }
+
+    const localVersion = String(chapter.updated_at ?? "");
+    const remoteVersion = String(data.updated_at ?? "");
+    if (localVersion !== remoteVersion) {
+      simpanDrafBabLokal(false);
+      tampilkanInfoSinkronisasi(
+        "Bab benar-benar diperbarui dari perangkat lain. Draf yang sedang kamu edit tidak ditimpa.",
+        "warning",
+        8500
+      );
+      msg("chapterActionMessage", "Ada versi bab yang lebih baru di cloud. Draf lokal tetap aman; muat versi terbaru dan gabungkan perubahan sebelum menyimpan.");
+    }
+  } catch (error) {
+    console.warn("Gagal memeriksa versi bab saat aplikasi aktif kembali:", error);
+    // Kegagalan pemeriksaan tidak boleh menghapus atau mengganti teks editor.
+  }
+}
+
 async function sinkronkanSaatKembali() {
   if (!currentUser || syncReturnRunning || document.hidden) return;
   const now = Date.now();
@@ -437,7 +483,8 @@ async function sinkronkanSaatKembali() {
     if (!novelStillExists) return;
 
     if (el("chapterEditText")) {
-      tampilkanInfoSinkronisasi("Ada kemungkinan pembaruan bab. Draf editor tidak diubah agar tulisanmu aman.", "warning", 0);
+      // Verify the remote updated_at first; merely returning to the tab is not a conflict.
+      await periksaPembaruanBabSaatEditorAktif();
     } else {
       await muatBab(true);
     }
@@ -449,7 +496,7 @@ async function sinkronkanSaatKembali() {
     if (!storyBibleFormBerubah()) {
       await muatStoryBible();
     } else {
-      tampilkanInfoSinkronisasi("Story Bible lokal belum disimpan dan dipertahankan.", "warning", 0);
+      tampilkanInfoSinkronisasi("Story Bible lokal belum disimpan dan dipertahankan.", "warning", 8500);
     }
   } catch (error) {
     console.warn("Sinkronisasi saat aplikasi aktif kembali gagal:", error);
@@ -2901,6 +2948,7 @@ function modeEditBab() {
   const existingDraft = bacaDrafBabLokal(activeChapterDraftMeta.key);
   const hasRecoverableDraft = Boolean(
     existingDraft &&
+    typeof existingDraft.text === "string" &&
     existingDraft.text !== activeChapterOriginalText
   );
   const baseChanged = Boolean(
@@ -2909,17 +2957,20 @@ function modeEditBab() {
     chapter.updated_at &&
     String(existingDraft.baseUpdatedAt) !== String(chapter.updated_at)
   );
+  const initialDraftStatus = hasRecoverableDraft
+    ? `Draf lokal ditemukan (${formatWaktuRevisi(existingDraft.savedAt)}). Gunakan tombol Pulihkan Draf jika ingin memakainya.`
+    : "Autosave draf lokal aktif. Setiap perubahan akan dicadangkan di perangkat ini.";
 
   area.innerHTML = `
     <div class="pena-manuscript-editor">
       <div class="pena-draft-toolbar">
-        <span id="chapterDraftStatus" role="status" aria-live="polite">Autosave draf lokal aktif. Perubahan akan dicadangkan di perangkat ini.</span>
+        <span id="chapterDraftStatus" role="status" aria-live="polite">${escapeHTML(initialDraftStatus)}</span>
         <div class="pena-draft-actions">
-          ${hasRecoverableDraft ? `<button type="button" id="restoreLocalChapterDraftBtn">↩ Pulihkan Draf Otomatis</button>` : ""}
-          ${hasRecoverableDraft ? `<button type="button" id="discardLocalChapterDraftBtn">Hapus Draf Lokal</button>` : ""}
+          <button type="button" id="restoreLocalChapterDraftBtn">↩ Periksa / Pulihkan Draf</button>
+          ${existingDraft ? `<button type="button" id="discardLocalChapterDraftBtn">Hapus Draf Lokal</button>` : ""}
         </div>
       </div>
-      ${baseChanged ? `<p class="pena-draft-warning">Perhatian: bab di cloud sudah berubah sejak draf lokal dibuat. Draf tetap bisa dipulihkan, tetapi penyimpanan akan memeriksa konflik versi.</p>` : ""}
+      ${baseChanged ? `<p class="pena-draft-warning">Perhatian: bab di cloud berubah setelah draf lokal dibuat. Draf tetap bisa dipulihkan, tetapi penyimpanan akan memeriksa konflik versi.</p>` : ""}
       <textarea
         id="chapterEditText"
         spellcheck="true"
@@ -2948,12 +2999,22 @@ function modeEditBab() {
   if (restoreBtn) {
     restoreBtn.onclick = () => {
       const latestDraft = bacaDrafBabLokal(activeChapterDraftMeta?.key);
-      if (!latestDraft) {
-        msg("chapterDraftStatus", "Draf lokal tidak ditemukan.");
+      if (!latestDraft || typeof latestDraft.text !== "string") {
+        msg("chapterDraftStatus", "Belum ada draf lokal yang tersimpan untuk bab ini pada perangkat/browser ini.");
+        return;
+      }
+      if (String(latestDraft.userId) !== String(currentUser?.id) ||
+          String(latestDraft.novelId) !== String(currentNovel?.id) ||
+          String(latestDraft.chapterId) !== String(activeChapterDraftMeta?.chapterId)) {
+        msg("chapterDraftStatus", "Draf ditemukan, tetapi identitas novel atau bab tidak cocok. Draf tidak diterapkan demi keamanan.");
+        return;
+      }
+      if (latestDraft.text === activeChapterOriginalText) {
+        msg("chapterDraftStatus", "Draf lokal ditemukan, tetapi isinya sama dengan versi cloud. Tidak ada perubahan yang perlu dipulihkan.");
         return;
       }
       textarea.value = latestDraft.text;
-      msg("chapterDraftStatus", `Draf lokal dipulihkan dari ${formatWaktuRevisi(latestDraft.savedAt)}. Periksa tulisan lalu simpan ke cloud.`);
+      msg("chapterDraftStatus", `Draf lokal dipulihkan dari ${formatWaktuRevisi(latestDraft.savedAt)}. Periksa tulisan lalu klik Simpan Perubahan jika sudah siap.`);
       textarea.focus();
     };
   }
@@ -2965,6 +3026,7 @@ function modeEditBab() {
       hapusDrafBabLokal(activeChapterDraftMeta?.key);
       if (textarea) textarea.value = activeChapterOriginalText;
       msg("chapterDraftStatus", "Draf lokal dihapus. Isi bab cloud tetap aman.");
+      discardBtn.remove();
     };
   }
 
@@ -2978,6 +3040,10 @@ function modeEditBab() {
         simpanDrafBabLokal(false);
         const proceed = confirm("Perubahan belum disimpan ke cloud. Draf sudah dicadangkan di perangkat ini dan bisa dipulihkan nanti. Keluar dari editor?");
         if (!proceed) return;
+      }
+      if (chapterDraftTimer) {
+        clearTimeout(chapterDraftTimer);
+        chapterDraftTimer = null;
       }
       renderChapterWorkspace();
     };
