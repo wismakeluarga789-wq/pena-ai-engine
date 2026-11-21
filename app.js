@@ -2966,7 +2966,10 @@ function modeEditBab() {
       <div class="pena-draft-toolbar">
         <span id="chapterDraftStatus" role="status" aria-live="polite">${escapeHTML(initialDraftStatus)}</span>
         <div class="pena-draft-actions">
-          <button type="button" id="restoreLocalChapterDraftBtn">↩ Periksa / Pulihkan Draf</button>
+          <button type="button" id="restoreLocalChapterDraftBtn"
+  style="display:block !important; background:red !important; color:white !important; font-size:20px !important; padding:15px !important;">
+  🔥 TES PULIHKAN DRAF
+</button>
           ${existingDraft ? `<button type="button" id="discardLocalChapterDraftBtn">Hapus Draf Lokal</button>` : ""}
         </div>
       </div>
