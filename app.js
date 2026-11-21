@@ -40,6 +40,14 @@ let syncReturnRunning = false;
 let lastSyncReturnAt = 0;
 let styleBaseUpdatedAt = null;
 
+// =====================================================
+// MANUSCRIPT PROTECTION STATE
+// =====================================================
+let chapterDraftTimer = null;
+let activeChapterDraftMeta = null;
+let activeChapterOriginalText = "";
+let manuscriptUnloadGuardInstalled = false;
+
 
 // =====================================================
 // VIDEO GALERI: putar hanya saat kartu terlihat di layar
@@ -457,6 +465,302 @@ function msg(id, text) {
   if (x) {
     x.textContent = text || "";
   }
+}
+
+
+// =====================================================
+// MANUSCRIPT PROTECTION — DRAF OTOMATIS LOKAL
+// =====================================================
+
+function kunciDrafBab(chapter) {
+  if (!currentUser?.id || !currentNovel?.id || !chapter?.id) return null;
+  return [
+    "pena-ai",
+    "chapter-draft-v1",
+    encodeURIComponent(String(currentUser.id)),
+    encodeURIComponent(String(currentNovel.id)),
+    encodeURIComponent(String(chapter.id))
+  ].join(":");
+}
+
+function bacaDrafBabLokal(key) {
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft.text !== "string") return null;
+    return draft;
+  } catch (error) {
+    console.warn("Tidak dapat membaca draf lokal:", error);
+    return null;
+  }
+}
+
+function hapusDrafBabLokal(key = activeChapterDraftMeta?.key) {
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn("Tidak dapat menghapus draf lokal:", error);
+  }
+}
+
+function editorBabBerubah() {
+  const textarea = el("chapterEditText");
+  if (!textarea || !activeChapterDraftMeta) return false;
+  return textarea.value !== activeChapterOriginalText;
+}
+
+function simpanDrafBabLokal(tampilkanStatus = true) {
+  const textarea = el("chapterEditText");
+  const meta = activeChapterDraftMeta;
+  if (!textarea || !meta || !currentUser || !currentNovel) return false;
+
+  const text = textarea.value;
+  if (text === activeChapterOriginalText) {
+    hapusDrafBabLokal(meta.key);
+    if (tampilkanStatus) msg("chapterDraftStatus", "Tidak ada perubahan yang perlu dipulihkan.");
+    return true;
+  }
+
+  const draft = {
+    version: 1,
+    userId: String(currentUser.id),
+    novelId: String(currentNovel.id),
+    chapterId: String(meta.chapterId),
+    baseUpdatedAt: meta.baseUpdatedAt || null,
+    savedAt: new Date().toISOString(),
+    text
+  };
+
+  try {
+    localStorage.setItem(meta.key, JSON.stringify(draft));
+    if (tampilkanStatus) {
+      const time = new Date(draft.savedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      msg("chapterDraftStatus", `✓ Draf otomatis tersimpan di perangkat ini pukul ${time}. Belum dikirim ke cloud.`);
+    }
+    return true;
+  } catch (error) {
+    console.error("Gagal menyimpan draf lokal:", error);
+    if (tampilkanStatus) {
+      msg("chapterDraftStatus", "Penyimpanan lokal gagal. Salin tulisanmu sebagai cadangan.");
+    }
+    return false;
+  }
+}
+
+function jadwalkanDrafBabLokal() {
+  clearTimeout(chapterDraftTimer);
+  msg("chapterDraftStatus", "Menyimpan draf otomatis...");
+  chapterDraftTimer = setTimeout(() => {
+    chapterDraftTimer = null;
+    simpanDrafBabLokal(true);
+  }, 700);
+}
+
+function pasangPeringatanNaskah() {
+  if (manuscriptUnloadGuardInstalled) return;
+  manuscriptUnloadGuardInstalled = true;
+
+  window.addEventListener("beforeunload", event => {
+    if (!editorBabBerubah()) return;
+    simpanDrafBabLokal(false);
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (editorBabBerubah()) simpanDrafBabLokal(false);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && editorBabBerubah()) simpanDrafBabLokal(false);
+  });
+}
+
+function formatWaktuRevisi(value) {
+  if (!value) return "Waktu tidak diketahui";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Waktu tidak diketahui";
+  return date.toLocaleString("id-ID", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
+}
+
+async function buatSnapshotBab(chapter, revisionNote = "Sebelum perubahan") {
+  const { data, error } = await supabase
+    .from("novel_bab_revisions")
+    .insert({
+      chapter_id: chapter.id,
+      novel_id: currentNovel.id,
+      user_id: currentUser.id,
+      nomor_bab: Number(chapter.nomor_bab) || 0,
+      judul_bab: String(chapter.judul_bab || ""),
+      isi_bab: String(chapter.isi_bab || ""),
+      source_updated_at: chapter.updated_at || null,
+      revision_note: revisionNote
+    })
+    .select("revision_id")
+    .single();
+
+  if (error) {
+    throw new Error("Riwayat versi belum siap. Jalankan SQL Manuscript Protection terlebih dahulu. Detail: " + error.message);
+  }
+  return data?.revision_id ?? null;
+}
+
+async function hapusSnapshotBab(revisionId) {
+  if (!revisionId || !currentUser) return;
+  try {
+    await supabase
+      .from("novel_bab_revisions")
+      .delete()
+      .eq("revision_id", revisionId)
+      .eq("user_id", currentUser.id);
+  } catch (error) {
+    console.warn("Snapshot sementara tidak berhasil dibersihkan:", error);
+  }
+}
+
+async function bukaRiwayatVersi(chapterId) {
+  if (!currentUser || !currentNovel) return;
+  const chapter = chapterData.find(item => String(item.id) === String(chapterId));
+  if (!chapter) {
+    alert("Bab tidak ditemukan.");
+    return;
+  }
+
+  const old = el("penaRevisionOverlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "penaRevisionOverlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(8,4,12,.82);backdrop-filter:blur(7px);";
+  overlay.innerHTML = `
+    <section style="width:min(100%,760px);max-height:calc(100vh - 28px);overflow:auto;padding:22px;border:1px solid rgba(218,158,221,.28);border-radius:18px;background:linear-gradient(145deg,#291833,#170f20);color:#fff;box-shadow:0 24px 90px #0009;">
+      <header style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <div><small style="color:#d8a6dd;letter-spacing:1px;">PENA AI · MANUSCRIPT PROTECTION</small><h2 style="margin:6px 0;">Riwayat Versi Bab ${escapeHTML(chapter.nomor_bab)}</h2><p style="margin:0;color:#c8b5ce;font-size:13px;">Maksimal 30 versi terakhir disimpan untuk setiap bab.</p></div>
+        <button type="button" id="penaRevisionClose" style="background:#ffffff12;color:#fff;border:1px solid #ffffff30;border-radius:9px;padding:7px 11px;cursor:pointer;">×</button>
+      </header>
+      <p id="penaRevisionStatus" style="color:#f4c8e8;font-size:13px;">Memuat riwayat versi...</p>
+      <div id="penaRevisionList"></div>
+    </section>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  el("penaRevisionClose").onclick = close;
+  overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+
+  const list = el("penaRevisionList");
+  const status = el("penaRevisionStatus");
+  const { data, error } = await supabase
+    .from("novel_bab_revisions")
+    .select("revision_id,chapter_id,novel_id,user_id,nomor_bab,judul_bab,isi_bab,source_updated_at,revision_note,created_at")
+    .eq("chapter_id", chapter.id)
+    .eq("novel_id", currentNovel.id)
+    .eq("user_id", currentUser.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (!overlay.isConnected) return;
+  if (error) {
+    status.textContent = "Gagal memuat riwayat: " + error.message;
+    return;
+  }
+
+  if (!data?.length) {
+    status.textContent = "Belum ada riwayat versi. Versi pertama akan tercatat saat kamu menyimpan perubahan bab.";
+    return;
+  }
+
+  status.textContent = `${data.length} versi ditemukan. Versi terbaru berada di urutan paling atas.`;
+  list.innerHTML = data.map((revision, index) => {
+    const preview = String(revision.isi_bab || "");
+    const excerpt = preview.slice(0, 340);
+    const wordCount = hitungKata(preview);
+    return `
+      <article style="margin:12px 0;padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.04);">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+          <strong>Versi ${data.length - index} · ${escapeHTML(formatWaktuRevisi(revision.created_at))}</strong>
+          <small style="color:#cbb8d2;">${formatAngka(wordCount)} kata</small>
+        </div>
+        <p style="margin:7px 0;color:#d6c7dc;font-size:12px;">${escapeHTML(revision.revision_note || "Sebelum perubahan")} · ${escapeHTML(revision.judul_bab || "Tanpa judul")}</p>
+        <details style="color:#eee;margin:8px 0;"><summary style="cursor:pointer;color:#e7b8df;">Pratinjau isi versi</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;background:#100a15;padding:12px;border-radius:9px;color:#e8e0eb;font:12px/1.65 system-ui,sans-serif;">${escapeHTML(excerpt)}${preview.length > excerpt.length ? "\n\n[Pratinjau dipotong. Buka untuk melihat bagian awal.]" : ""}</pre></details>
+        <button type="button" class="penaRestoreRevisionBtn" data-revision-id="${escapeHTML(String(revision.revision_id))}" style="background:linear-gradient(110deg,#b93c91,#7044a8);color:white;border:0;border-radius:9px;padding:9px 13px;cursor:pointer;">Pulihkan versi ini</button>
+      </article>`;
+  }).join("");
+
+  list.querySelectorAll(".penaRestoreRevisionBtn").forEach(button => {
+    button.onclick = () => pulihkanVersiBab(button.dataset.revisionId, chapter.id, overlay);
+  });
+}
+
+async function pulihkanVersiBab(revisionId, chapterId, overlay) {
+  const index = chapterData.findIndex(item => String(item.id) === String(chapterId));
+  const current = chapterData[index];
+  if (!current || !currentUser || !currentNovel) return;
+
+  const { data: revision, error: readError } = await supabase
+    .from("novel_bab_revisions")
+    .select("revision_id,chapter_id,novel_id,user_id,nomor_bab,judul_bab,isi_bab,source_updated_at,created_at")
+    .eq("revision_id", revisionId)
+    .eq("chapter_id", current.id)
+    .eq("novel_id", currentNovel.id)
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if (readError || !revision) {
+    alert("Versi yang dipilih tidak dapat dibaca. " + (readError?.message || "Versi tidak ditemukan."));
+    return;
+  }
+
+  if (!confirm(`Pulihkan versi dari ${formatWaktuRevisi(revision.created_at)}?\n\nIsi bab saat ini akan disimpan dahulu ke riwayat, lalu diganti dengan versi pilihan.`)) return;
+
+  let safetyRevisionId = null;
+  try {
+    safetyRevisionId = await buatSnapshotBab(current, `Sebelum memulihkan versi ${revisionId}`);
+    let query = supabase
+      .from("novel_bab")
+      .update({
+        isi_bab: revision.isi_bab,
+        judul_bab: revision.judul_bab,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", current.id)
+      .eq("novel_id", currentNovel.id)
+      .eq("user_id", currentUser.id);
+
+    if (current.updated_at) query = query.eq("updated_at", current.updated_at);
+    else query = query.is("updated_at", null);
+
+    const { data, error } = await query.select().maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      await hapusSnapshotBab(safetyRevisionId);
+      alert("Pemulihan dibatalkan karena bab telah berubah di perangkat lain. Versi terbaru tidak ditimpa.");
+      return;
+    }
+
+    chapterData[index] = data;
+    hapusDrafBabLokal(kunciDrafBab(current));
+    activeChapterDraftMeta = null;
+    activeChapterOriginalText = "";
+    if (overlay?.isConnected) overlay.remove();
+    renderChapterWorkspace();
+    tampilkanInfoSinkronisasi("Versi bab berhasil dipulihkan. Versi sebelumnya tetap tersimpan di riwayat.", "success", 5500);
+  } catch (error) {
+    // Bila jaringan terputus setelah server memproses update, snapshot tetap dipertahankan sebagai jaring pengaman.
+    alert("Gagal memulihkan versi: " + (error?.message || String(error)) + (safetyRevisionId ? " Snapshot sebelum pemulihan tetap disimpan di riwayat." : ""));
+  }
+}
+
+function pasangPeringatanNavigasiEditor() {
+  const textarea = el("chapterEditText");
+  if (!textarea || !editorBabBerubah()) return true;
+  simpanDrafBabLokal(false);
+  return confirm("Ada perubahan naskah yang belum disimpan ke cloud. Draf sudah dicadangkan di perangkat ini. Tetap tinggalkan editor?");
 }
 
 
@@ -1012,6 +1316,11 @@ function tampilkanLogin() {
 
 function bukaHalaman(id) {
 
+  if (id !== "detailPage" && el("chapterEditText")) {
+    if (!pasangPeringatanNavigasiEditor()) return false;
+    renderChapterWorkspace();
+  }
+
   document
     .querySelectorAll(".page")
     .forEach(page => {
@@ -1209,6 +1518,15 @@ async function daftar() {
 // =====================================================
 
 async function logout() {
+
+  if (el("chapterEditText")) {
+    if (editorBabBerubah()) {
+      simpanDrafBabLokal(false);
+      const proceed = confirm("Ada naskah yang belum disimpan ke cloud. Draf sudah dicadangkan di perangkat ini. Tetap logout dari perangkat ini?");
+      if (!proceed) return;
+    }
+    renderChapterWorkspace();
+  }
 
   try {
 
@@ -2276,6 +2594,12 @@ function renderChapterWorkspace() {
 
               </button>
 
+              <button
+                id="chapterHistoryBtn">
+
+                📜 Riwayat Versi
+
+              </button>
 
               <button
                 id="deleteCurrentChapterBtn">
@@ -2321,6 +2645,11 @@ function renderChapterWorkspace() {
         chapterSearchText =
           this.value;
 
+        if (el("chapterEditText")) {
+          msg("chapterDraftStatus", "Selesaikan atau batalkan edit bab terlebih dahulu sebelum memperbarui daftar pencarian.");
+          return;
+        }
+
         renderChapterWorkspace();
 
       };
@@ -2340,6 +2669,11 @@ function renderChapterWorkspace() {
 
       button.onclick =
         () => {
+
+          if (el("chapterEditText")) {
+            if (!pasangPeringatanNavigasiEditor()) return;
+            renderChapterWorkspace();
+          }
 
           currentChapterIndex =
             Number(
@@ -2371,6 +2705,10 @@ function renderChapterWorkspace() {
         if (
           currentChapterIndex > 0
         ) {
+          if (el("chapterEditText")) {
+            if (!pasangPeringatanNavigasiEditor()) return;
+            renderChapterWorkspace();
+          }
 
           currentChapterIndex--;
 
@@ -2402,6 +2740,10 @@ function renderChapterWorkspace() {
           currentChapterIndex <
           chapterData.length - 1
         ) {
+          if (el("chapterEditText")) {
+            if (!pasangPeringatanNavigasiEditor()) return;
+            renderChapterWorkspace();
+          }
 
           currentChapterIndex++;
 
@@ -2469,6 +2811,11 @@ function renderChapterWorkspace() {
     };
   }
 
+  const historyBtn = el("chapterHistoryBtn");
+  if (historyBtn) {
+    historyBtn.onclick = () => bukaRiwayatVersi(currentChapter.id);
+  }
+
 
   // ===================================================
   // EDIT
@@ -2517,161 +2864,153 @@ function renderChapterWorkspace() {
 // MODE EDIT BAB
 // =====================================================
 
-function modeEditBab() {
-
-  const chapter =
-    chapterData[
-      currentChapterIndex
-    ];
-
-
-  if (!chapter) {
-    return;
-  }
-
-
-  const area =
-    el("chapterContentArea");
-
-
-  if (!area) {
-    return;
-  }
-
-
-  area.innerHTML = `
-
-    <textarea
-      id="chapterEditText"
-      style="
-        width:100%;
-        min-height:650px;
-        padding:20px;
-        resize:vertical;
-        line-height:1.8;
-        font-size:16px;
-        box-sizing:border-box;
-      ">${escapeHTML(
-        chapter.isi_bab ||
-        ""
-      )}</textarea>
-
+function pasangStylePerlindunganNaskah() {
+  if (el("penaManuscriptStyles")) return;
+  const style = document.createElement("style");
+  style.id = "penaManuscriptStyles";
+  style.textContent = `
+    .pena-manuscript-editor{display:grid;gap:12px}
+    .pena-draft-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 13px;border:1px solid rgba(150,115,180,.28);border-radius:11px;background:rgba(110,75,135,.12);color:#e9d9f0;font-size:12px;line-height:1.5}
+    .pena-draft-actions{display:flex;gap:7px;flex-wrap:wrap}
+    .pena-draft-actions button{border:1px solid rgba(255,255,255,.18);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;padding:7px 10px;cursor:pointer}
+    .pena-draft-warning{margin:0;padding:10px 12px;border-radius:9px;background:rgba(190,120,35,.15);border:1px solid rgba(230,170,80,.35);color:#ffe0a8;font-size:12px;line-height:1.6}
+    .pena-draft-footnote{margin:0;color:#bfaec9;font-size:11px;line-height:1.6}
+    #chapterEditText{background:#100d16;color:#f4eef7;border:1px solid rgba(190,150,220,.28);border-radius:12px;outline:none}
+    #chapterEditText:focus{border-color:rgba(190,130,240,.75);box-shadow:0 0 0 3px rgba(160,100,210,.12)}
+    @media(max-width:600px){.pena-draft-toolbar{align-items:flex-start}.pena-draft-actions{width:100%}.pena-draft-actions button{flex:1}}
   `;
-
-
-  const actionMessage =
-    el("chapterActionMessage");
-
-
-  if (actionMessage) {
-
-    actionMessage.innerHTML = `
-
-      <div
-        style="
-          display:flex;
-          gap:10px;
-          flex-wrap:wrap;
-          margin-top:10px;
-        ">
-
-        <button
-          id="saveEditedChapterBtn">
-
-          💾 Simpan Perubahan
-
-        </button>
-
-
-        <button
-          id="cancelEditChapterBtn">
-
-          Batal
-
-        </button>
-
-      </div>
-
-    `;
-
-  }
-
-
-  const saveBtn =
-    el("saveEditedChapterBtn");
-
-
-  if (saveBtn) {
-
-    saveBtn.onclick =
-      simpanEditBab;
-
-  }
-
-
-  const cancelBtn =
-    el("cancelEditChapterBtn");
-
-
-  if (cancelBtn) {
-
-    cancelBtn.onclick =
-      () => {
-
-        renderChapterWorkspace();
-
-      };
-
-  }
+  document.head.appendChild(style);
 }
 
+function modeEditBab() {
+  const chapter = chapterData[currentChapterIndex];
+  if (!chapter) return;
+  pasangStylePerlindunganNaskah();
+
+  const area = el("chapterContentArea");
+  if (!area) return;
+
+  activeChapterOriginalText = String(chapter.isi_bab || "");
+  activeChapterDraftMeta = {
+    chapterId: chapter.id,
+    key: kunciDrafBab(chapter),
+    baseUpdatedAt: chapter.updated_at || null
+  };
+  pasangPeringatanNaskah();
+
+  const existingDraft = bacaDrafBabLokal(activeChapterDraftMeta.key);
+  const hasRecoverableDraft = Boolean(
+    existingDraft &&
+    existingDraft.text !== activeChapterOriginalText
+  );
+  const baseChanged = Boolean(
+    hasRecoverableDraft &&
+    existingDraft.baseUpdatedAt &&
+    chapter.updated_at &&
+    String(existingDraft.baseUpdatedAt) !== String(chapter.updated_at)
+  );
+
+  area.innerHTML = `
+    <div class="pena-manuscript-editor">
+      <div class="pena-draft-toolbar">
+        <span id="chapterDraftStatus" role="status" aria-live="polite">Autosave draf lokal aktif. Perubahan akan dicadangkan di perangkat ini.</span>
+        <div class="pena-draft-actions">
+          ${hasRecoverableDraft ? `<button type="button" id="restoreLocalChapterDraftBtn">↩ Pulihkan Draf Otomatis</button>` : ""}
+          ${hasRecoverableDraft ? `<button type="button" id="discardLocalChapterDraftBtn">Hapus Draf Lokal</button>` : ""}
+        </div>
+      </div>
+      ${baseChanged ? `<p class="pena-draft-warning">Perhatian: bab di cloud sudah berubah sejak draf lokal dibuat. Draf tetap bisa dipulihkan, tetapi penyimpanan akan memeriksa konflik versi.</p>` : ""}
+      <textarea
+        id="chapterEditText"
+        spellcheck="true"
+        aria-label="Edit isi bab"
+        style="width:100%;min-height:650px;padding:20px;resize:vertical;line-height:1.8;font-size:16px;box-sizing:border-box;">${escapeHTML(activeChapterOriginalText)}</textarea>
+      <p class="pena-draft-footnote">Draf otomatis tersimpan di browser/perangkat ini, bukan ke cloud. Klik <strong>Simpan Perubahan</strong> untuk menyimpan ke Supabase dan membuat versi pemulihan.</p>
+    </div>
+  `;
+
+  const actionMessage = el("chapterActionMessage");
+  if (actionMessage) {
+    actionMessage.innerHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+        <button id="saveEditedChapterBtn">💾 Simpan Perubahan</button>
+        <button id="cancelEditChapterBtn">Batal</button>
+      </div>
+    `;
+  }
+
+  const textarea = el("chapterEditText");
+  if (textarea) {
+    textarea.addEventListener("input", jadwalkanDrafBabLokal);
+  }
+
+  const restoreBtn = el("restoreLocalChapterDraftBtn");
+  if (restoreBtn) {
+    restoreBtn.onclick = () => {
+      const latestDraft = bacaDrafBabLokal(activeChapterDraftMeta?.key);
+      if (!latestDraft) {
+        msg("chapterDraftStatus", "Draf lokal tidak ditemukan.");
+        return;
+      }
+      textarea.value = latestDraft.text;
+      msg("chapterDraftStatus", `Draf lokal dipulihkan dari ${formatWaktuRevisi(latestDraft.savedAt)}. Periksa tulisan lalu simpan ke cloud.`);
+      textarea.focus();
+    };
+  }
+
+  const discardBtn = el("discardLocalChapterDraftBtn");
+  if (discardBtn) {
+    discardBtn.onclick = () => {
+      if (!confirm("Hapus draf otomatis lokal untuk bab ini? Isi bab di cloud tidak akan berubah.")) return;
+      hapusDrafBabLokal(activeChapterDraftMeta?.key);
+      if (textarea) textarea.value = activeChapterOriginalText;
+      msg("chapterDraftStatus", "Draf lokal dihapus. Isi bab cloud tetap aman.");
+    };
+  }
+
+  const saveBtn = el("saveEditedChapterBtn");
+  if (saveBtn) saveBtn.onclick = simpanEditBab;
+
+  const cancelBtn = el("cancelEditChapterBtn");
+  if (cancelBtn) {
+    cancelBtn.onclick = () => {
+      if (editorBabBerubah()) {
+        simpanDrafBabLokal(false);
+        const proceed = confirm("Perubahan belum disimpan ke cloud. Draf sudah dicadangkan di perangkat ini dan bisa dipulihkan nanti. Keluar dari editor?");
+        if (!proceed) return;
+      }
+      renderChapterWorkspace();
+    };
+  }
+}
 
 // =====================================================
 // SIMPAN EDIT BAB
 // =====================================================
 
 async function simpanEditBab() {
+  const chapter = chapterData[currentChapterIndex];
+  const textarea = el("chapterEditText");
+  if (!chapter || !textarea || !currentUser || !currentNovel) return;
 
-  const chapter =
-    chapterData[
-      currentChapterIndex
-    ];
+  const isiBaru = textarea.value;
+  const saveBtn = el("saveEditedChapterBtn");
+  if (saveBtn) saveBtn.disabled = true;
+  msg("chapterActionMessage", "Menyimpan versi aman dan perubahan naskah...");
 
-
-  if (!chapter) {
+  if (isiBaru === String(chapter.isi_bab || "")) {
+    hapusDrafBabLokal(activeChapterDraftMeta?.key);
+    activeChapterDraftMeta = null;
+    activeChapterOriginalText = "";
+    renderChapterWorkspace();
+    msg("chapterActionMessage", "Tidak ada perubahan baru. Naskah sudah sesuai dengan versi cloud.");
     return;
   }
 
-
-  const textarea =
-    el("chapterEditText");
-
-
-  if (!textarea) {
-    return;
-  }
-
-
-  const isiBaru =
-    textarea.value;
-
-
-  const saveBtn =
-    el("saveEditedChapterBtn");
-
-
-  if (saveBtn) {
-    saveBtn.disabled = true;
-  }
-
-
-  msg(
-    "chapterActionMessage",
-    "Menyimpan perubahan..."
-  );
-
-
+  let revisionId = null;
   try {
+    // Simpan versi lama terlebih dahulu agar selalu ada titik pemulihan.
+    revisionId = await buatSnapshotBab(chapter, "Sebelum edit manual");
 
     let updateQuery = supabase
       .from("novel_bab")
@@ -2683,64 +3022,34 @@ async function simpanEditBab() {
       .eq("novel_id", currentNovel.id)
       .eq("user_id", currentUser.id);
 
-    // Kunci versi: jangan izinkan draf lama menimpa edit dari perangkat lain.
-    if (chapter.updated_at) {
-      updateQuery = updateQuery.eq("updated_at", chapter.updated_at);
-    } else {
-      updateQuery = updateQuery.is("updated_at", null);
-    }
+    // Optimistic locking: mencegah draf lama menimpa versi yang diubah perangkat lain.
+    if (chapter.updated_at) updateQuery = updateQuery.eq("updated_at", chapter.updated_at);
+    else updateQuery = updateQuery.is("updated_at", null);
 
     const { data, error } = await updateQuery.select().maybeSingle();
-
-    if (error) {
-      msg("chapterActionMessage", "Gagal menyimpan: " + error.message);
-      if (saveBtn) saveBtn.disabled = false;
-      return;
-    }
+    if (error) throw error;
 
     if (!data) {
-      msg(
-        "chapterActionMessage",
-        "Konflik versi: bab ini sudah diubah atau dihapus dari perangkat lain. Draf di perangkat ini tidak ditimpa. Salin isi editor, batalkan, lalu muat versi terbaru sebelum menggabungkan perubahan."
-      );
-      tampilkanInfoSinkronisasi("Penyimpanan diblokir agar edit terbaru tidak tertimpa.", "warning", 0);
+      await hapusSnapshotBab(revisionId);
+      msg("chapterActionMessage", "Konflik versi: bab sudah diubah atau dihapus dari perangkat lain. Draf lokalmu tetap tersedia dan tidak ditimpa. Pulihkan/salin draf, muat versi terbaru, lalu gabungkan secara manual.");
+      tampilkanInfoSinkronisasi("Penyimpanan diblokir agar tulisan dari perangkat lain tidak tertimpa.", "warning", 0);
       if (saveBtn) saveBtn.disabled = false;
       return;
     }
 
-
-    chapterData[
-      currentChapterIndex
-    ] =
-      data;
-
-
-    msg(
-      "chapterActionMessage",
-      "Perubahan berhasil disimpan."
-    );
-
-
+    chapterData[currentChapterIndex] = data;
+    hapusDrafBabLokal(activeChapterDraftMeta?.key);
+    activeChapterDraftMeta = null;
+    activeChapterOriginalText = "";
     renderChapterWorkspace();
-
+    msg("chapterActionMessage", "Perubahan tersimpan ke cloud. Versi sebelumnya tersedia di Riwayat Versi.");
+    tampilkanInfoSinkronisasi("Naskah tersimpan dan versi sebelumnya dicadangkan.", "success", 4200);
   } catch (error) {
-
-    msg(
-      "chapterActionMessage",
-      "Gagal menyimpan: " +
-      (
-        error.message ||
-        error
-      )
-    );
-
-
-    if (saveBtn) {
-      saveBtn.disabled = false;
-    }
+    // Snapshot dipertahankan bila respons jaringan ambigu: server mungkin sudah menerima update.
+    msg("chapterActionMessage", "Gagal menyimpan: " + (error?.message || String(error)) + " Draf lokal tetap dipertahankan. Jika snapshot sudah dibuat, versi sebelumnya tetap tersedia di riwayat.");
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
-
 
 // =====================================================
 // HAPUS BAB
@@ -2805,6 +3114,11 @@ async function hapusBab(id) {
       return;
     }
 
+    hapusDrafBabLokal(kunciDrafBab(chapter));
+    if (String(activeChapterDraftMeta?.chapterId) === String(chapter.id)) {
+      activeChapterDraftMeta = null;
+      activeChapterOriginalText = "";
+    }
 
     const sisaBab =
       chapterData.filter(
