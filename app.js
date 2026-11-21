@@ -23,8 +23,22 @@ let chapterData = [];
 let currentChapterIndex = -1;
 let chapterSearchText = "";
 let editingCharacterId = null;
+let editingCharacterBaseUpdatedAt = null;
 let characterRecords = [];
 let storyBibleRecord = null;
+
+// =====================================================
+// MULTI-DEVICE SYNC STATE
+// =====================================================
+let realtimeChannel = null;
+let realtimeUserId = null;
+let realtimeRefreshTimer = null;
+let realtimeQueuedEvents = new Map();
+let realtimeToastTimer = null;
+let syncReturnHandlersInstalled = false;
+let syncReturnRunning = false;
+let lastSyncReturnAt = 0;
+let styleBaseUpdatedAt = null;
 
 
 // =====================================================
@@ -102,6 +116,338 @@ if (!window.__penaGalleryVisibilityHandler) {
 
 function el(id) {
   return document.getElementById(id);
+}
+
+
+// =====================================================
+// MULTI-DEVICE SYNCHRONIZATION
+// =====================================================
+
+function tampilkanInfoSinkronisasi(text, type = "info", duration = 4200) {
+  let toast = el("penaSyncToast");
+  if (!toast && document.body) {
+    toast = document.createElement("div");
+    toast.id = "penaSyncToast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.style.cssText = [
+      "position:fixed",
+      "top:14px",
+      "right:14px",
+      "z-index:100000",
+      "max-width:min(360px,calc(100vw - 28px))",
+      "padding:11px 15px",
+      "border:1px solid rgba(190,150,220,.35)",
+      "border-radius:12px",
+      "background:rgba(24,16,34,.96)",
+      "color:#fff",
+      "font:500 12px/1.55 system-ui,sans-serif",
+      "box-shadow:0 12px 35px rgba(0,0,0,.32)",
+      "backdrop-filter:blur(8px)",
+      "display:none"
+    ].join(";");
+    document.body.appendChild(toast);
+  }
+  if (!toast) return;
+
+  clearTimeout(realtimeToastTimer);
+  toast.textContent = text;
+  toast.style.borderColor = type === "error"
+    ? "rgba(255,110,125,.65)"
+    : type === "warning"
+      ? "rgba(255,195,90,.65)"
+      : "rgba(120,220,180,.48)";
+  toast.style.display = "block";
+
+  if (duration > 0) {
+    realtimeToastTimer = setTimeout(() => {
+      if (toast) toast.style.display = "none";
+    }, duration);
+  }
+}
+
+function storyBibleFormBerubah() {
+  if (!Array.isArray(STORY_BIBLE_FIELDS)) return false;
+  return STORY_BIBLE_FIELDS.some(([column, id]) => {
+    const field = el(id);
+    if (!field) return false;
+    const saved = String(storyBibleRecord?.[column] ?? "").trim();
+    return String(field.value ?? "").trim() !== saved;
+  });
+}
+
+function gayaFormBerubah() {
+  if (!currentNovel) return false;
+  const fields = [
+    ["styleGenre", "genre", "Drama"],
+    ["styleWriting", "gaya", "Natural"],
+    ["styleMood", "nuansa", "Emosional"],
+    ["styleMode", "mode", "Normal"]
+  ];
+  return fields.some(([id, column, fallback]) => {
+    const field = el(id);
+    if (!field) return false;
+    return String(field.value || fallback) !== String(currentNovel[column] || fallback);
+  });
+}
+
+function karakterFormSedangDiedit() {
+  if (editingCharacterId) return true;
+  return [
+    "charName", "charAge", "charRole", "charTrait",
+    "charBackground", "charRelationship", "charGoal",
+    "charSecret", "charNotes"
+  ].some(id => String(el(id)?.value || "").trim() !== "");
+}
+
+function pasangPemulihanSinkronisasi() {
+  if (syncReturnHandlersInstalled) return;
+  syncReturnHandlersInstalled = true;
+
+  window.addEventListener("focus", sinkronkanSaatKembali);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) sinkronkanSaatKembali();
+  });
+  window.addEventListener("online", sinkronkanSaatKembali);
+}
+
+async function hentikanSinkronisasiRealtime() {
+  if (realtimeRefreshTimer) {
+    clearTimeout(realtimeRefreshTimer);
+    realtimeRefreshTimer = null;
+  }
+  realtimeQueuedEvents.clear();
+
+  const oldChannel = realtimeChannel;
+  realtimeChannel = null;
+  realtimeUserId = null;
+
+  if (oldChannel) {
+    try {
+      await supabase.removeChannel(oldChannel);
+    } catch (error) {
+      console.warn("Gagal menutup kanal sinkronisasi:", error);
+    }
+  }
+}
+
+async function pasangSinkronisasiRealtime(user) {
+  if (!user?.id) return;
+  if (realtimeChannel && realtimeUserId === user.id) return;
+
+  await hentikanSinkronisasiRealtime();
+  pasangPemulihanSinkronisasi();
+
+  const tables = ["novel", "novel_bab", "novel_karakter", "novel_story_bible"];
+  const channel = supabase.channel(`pena-sync-${user.id}`);
+
+  tables.forEach(table => {
+    ["INSERT", "UPDATE"].forEach(event => {
+      channel.on(
+        "postgres_changes",
+        {
+          event,
+          schema: "public",
+          table,
+          filter: `user_id=eq.${user.id}`
+        },
+        payload => jadwalkanPerubahanRealtime(table, payload)
+      );
+    });
+  });
+
+  realtimeChannel = channel;
+  realtimeUserId = user.id;
+
+  channel.subscribe((status, error) => {
+    if (realtimeChannel !== channel || currentUser?.id !== user.id) return;
+
+    if (status === "SUBSCRIBED") {
+      tampilkanInfoSinkronisasi("Sinkronisasi antarperangkat aktif.", "success", 3500);
+    } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.error("Realtime PENA AI:", error || status);
+      tampilkanInfoSinkronisasi(
+        "Sinkronisasi langsung terputus. Perubahan akan diperiksa saat aplikasi aktif kembali.",
+        "warning",
+        0
+      );
+    } else if (status === "CLOSED") {
+      tampilkanInfoSinkronisasi("Koneksi sinkronisasi ditutup.", "warning", 5000);
+    }
+  });
+}
+
+function jadwalkanPerubahanRealtime(table, payload) {
+  if (!currentUser) return;
+  const row = payload?.new || payload?.old || {};
+  if (row.user_id && String(row.user_id) !== String(currentUser.id)) return;
+
+  const queued = realtimeQueuedEvents.get(table) || [];
+  queued.push(payload);
+  realtimeQueuedEvents.set(table, queued);
+  if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer);
+
+  realtimeRefreshTimer = setTimeout(async () => {
+    const pending = Array.from(realtimeQueuedEvents.entries());
+    realtimeQueuedEvents.clear();
+    realtimeRefreshTimer = null;
+
+    for (const [changedTable, eventPayloads] of pending) {
+      try {
+        await prosesPerubahanRealtime(changedTable, eventPayloads);
+      } catch (error) {
+        console.error(`Gagal menyinkronkan tabel ${changedTable}:`, error);
+      }
+    }
+  }, 450);
+}
+
+async function prosesPerubahanRealtime(table, payloads) {
+  if (!currentUser) return;
+  const rows = (Array.isArray(payloads) ? payloads : [payloads])
+    .map(payload => payload?.new || payload?.old || {})
+    .filter(row => !row.user_id || String(row.user_id) === String(currentUser.id));
+  if (!rows.length) return;
+
+  if (table === "novel") {
+    await Promise.all([muatNovel(), muatBeranda()]);
+    if (currentNovel && rows.some(row => String(row.id) === String(currentNovel.id))) {
+      await segarkanNovelAktifDariDatabase();
+    }
+    tampilkanInfoSinkronisasi("Daftar novel diperbarui dari perangkat lain.", "success");
+    return;
+  }
+
+  if (table === "novel_bab") {
+    await muatBeranda();
+    if (!currentNovel || !rows.some(row => String(row.novel_id) === String(currentNovel.id))) return;
+
+    if (el("chapterEditText")) {
+      tampilkanInfoSinkronisasi(
+        "Bab ini berubah di perangkat lain. Teks yang sedang kamu edit tidak ditimpa; salin drafmu sebelum memuat versi terbaru.",
+        "warning",
+        0
+      );
+      msg("chapterActionMessage", "Ada perubahan bab dari perangkat lain. Simpan draf lokal terlebih dahulu; sistem akan menolak penyimpanan yang menimpa versi lebih baru.");
+    } else {
+      await muatBab(true);
+      tampilkanInfoSinkronisasi("Bab diperbarui dari perangkat lain.", "success");
+    }
+    return;
+  }
+
+  if (!currentNovel || !rows.some(row => String(row.novel_id) === String(currentNovel.id))) return;
+
+  if (table === "novel_karakter") {
+    if (karakterFormSedangDiedit()) {
+      tampilkanInfoSinkronisasi(
+        "Profil karakter berubah di perangkat lain. Form yang sedang kamu isi tetap dipertahankan.",
+        "warning",
+        0
+      );
+      msg("characterMessage", "Ada perubahan profil dari perangkat lain. Sistem akan memeriksa konflik sebelum menyimpan agar perubahan tidak saling menimpa.");
+    } else {
+      await muatKarakter();
+      tampilkanInfoSinkronisasi("Profil karakter diperbarui dari perangkat lain.", "success");
+    }
+    return;
+  }
+
+  if (table === "novel_story_bible") {
+    if (storyBibleFormBerubah()) {
+      tampilkanInfoSinkronisasi(
+        "Story Bible berubah di perangkat lain. Isian lokal belum ditimpa; salin drafmu sebelum memuat versi terbaru.",
+        "warning",
+        0
+      );
+      msg("storyBibleMessage", "Ada perubahan Story Bible dari perangkat lain. Penyimpanan akan memeriksa versi agar tidak menimpa perubahan tersebut.");
+    } else {
+      await muatStoryBible();
+      tampilkanInfoSinkronisasi("Story Bible diperbarui dari perangkat lain.", "success");
+    }
+  }
+}
+
+async function segarkanNovelAktifDariDatabase() {
+  if (!currentNovel || !currentUser) return false;
+  const novelId = currentNovel.id;
+  const styleDirty = gayaFormBerubah();
+
+  const { data, error } = await supabase
+    .from("novel")
+    .select("*")
+    .eq("id", novelId)
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Gagal menyegarkan novel aktif:", error);
+    return false;
+  }
+
+  if (!data) {
+    currentNovel = null;
+    chapterData = [];
+    currentChapterIndex = -1;
+    characterRecords = [];
+    storyBibleRecord = null;
+    editingCharacterId = null;
+    editingCharacterBaseUpdatedAt = null;
+    bukaHalaman("novelPage");
+    await Promise.all([muatNovel(), muatBeranda()]);
+    tampilkanInfoSinkronisasi("Novel ini sudah dihapus dari perangkat lain.", "warning", 0);
+    return false;
+  }
+
+  currentNovel = data;
+  if (el("detailTitle")) el("detailTitle").textContent = data.judul || "-";
+  if (el("detailInfo")) {
+    el("detailInfo").textContent = `${data.genre || "Drama"} · ${data.gaya || "Natural"} · ${data.nuansa || "Emosional"} · Bab ${data.bab_selesai || 0}`;
+  }
+  if (el("detailPremise")) el("detailPremise").textContent = data.premis || "Belum ada premis.";
+
+  if (!styleDirty) {
+    muatGaya();
+  } else {
+    msg("styleMessage", "Novel berubah di perangkat lain. Pilihan gaya lokal dipertahankan; simpan akan ditolak bila memakai versi yang sudah kedaluwarsa.");
+  }
+  return true;
+}
+
+async function sinkronkanSaatKembali() {
+  if (!currentUser || syncReturnRunning || document.hidden) return;
+  const now = Date.now();
+  if (now - lastSyncReturnAt < 4500) return;
+  lastSyncReturnAt = now;
+  syncReturnRunning = true;
+
+  try {
+    await Promise.all([muatNovel(), muatBeranda()]);
+    if (!currentNovel) return;
+
+    const novelStillExists = await segarkanNovelAktifDariDatabase();
+    if (!novelStillExists) return;
+
+    if (el("chapterEditText")) {
+      tampilkanInfoSinkronisasi("Ada kemungkinan pembaruan bab. Draf editor tidak diubah agar tulisanmu aman.", "warning", 0);
+    } else {
+      await muatBab(true);
+    }
+
+    if (!karakterFormSedangDiedit()) {
+      await muatKarakter();
+    }
+
+    if (!storyBibleFormBerubah()) {
+      await muatStoryBible();
+    } else {
+      tampilkanInfoSinkronisasi("Story Bible lokal belum disimpan dan dipertahankan.", "warning", 0);
+    }
+  } catch (error) {
+    console.warn("Sinkronisasi saat aplikasi aktif kembali gagal:", error);
+  } finally {
+    syncReturnRunning = false;
+  }
 }
 
 
@@ -639,6 +985,12 @@ function tampilkanStudio() {
   }
 
   aturPemutaranVideoGaleri();
+  if (currentUser) {
+    pasangSinkronisasiRealtime(currentUser).catch(error => {
+      console.error("Gagal memasang sinkronisasi Realtime:", error);
+      tampilkanInfoSinkronisasi("Sinkronisasi belum tersambung. Periksa setup Realtime Supabase.", "warning", 0);
+    });
+  }
 }
 
 
@@ -860,7 +1212,9 @@ async function logout() {
 
   try {
 
-    await supabase.auth.signOut();
+    await hentikanSinkronisasiRealtime();
+    // Logout perangkat ini saja; perangkat lain tetap login.
+    await supabase.auth.signOut({ scope: "local" });
 
   } catch (error) {
 
@@ -1414,7 +1768,7 @@ async function bukaNovel(id) {
 // MUAT SEMUA BAB
 // =====================================================
 
-async function muatBab() {
+async function muatBab(preserveCurrent = false) {
 
   if (
     !currentNovel ||
@@ -1422,6 +1776,10 @@ async function muatBab() {
   ) {
     return;
   }
+
+  const previousChapterId = preserveCurrent && chapterData[currentChapterIndex]
+    ? chapterData[currentChapterIndex].id
+    : null;
 
 
   const box =
@@ -1520,9 +1878,17 @@ async function muatBab() {
   // DEFAULT KE BAB TERAKHIR
   // ===================================================
 
-  currentChapterIndex =
-    chapterData.length - 1;
+  if (previousChapterId !== null) {
+    currentChapterIndex = chapterData.findIndex(
+      chapter => String(chapter.id) === String(previousChapterId)
+    );
+  } else {
+    currentChapterIndex = -1;
+  }
 
+  if (currentChapterIndex < 0) {
+    currentChapterIndex = chapterData.length - 1;
+  }
 
   renderChapterWorkspace();
 }
@@ -2307,49 +2673,38 @@ async function simpanEditBab() {
 
   try {
 
-    const {
-      data,
-      error
-    } =
-      await supabase
-        .from("novel_bab")
-        .update({
+    let updateQuery = supabase
+      .from("novel_bab")
+      .update({
+        isi_bab: isiBaru,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", chapter.id)
+      .eq("novel_id", currentNovel.id)
+      .eq("user_id", currentUser.id);
 
-          isi_bab:
-            isiBaru,
+    // Kunci versi: jangan izinkan draf lama menimpa edit dari perangkat lain.
+    if (chapter.updated_at) {
+      updateQuery = updateQuery.eq("updated_at", chapter.updated_at);
+    } else {
+      updateQuery = updateQuery.is("updated_at", null);
+    }
 
-          updated_at:
-            new Date().toISOString()
-
-        })
-        .eq(
-          "id",
-          chapter.id
-        )
-        .eq(
-          "novel_id",
-          currentNovel.id
-        )
-        .eq(
-          "user_id",
-          currentUser.id
-        )
-        .select()
-        .single();
-
+    const { data, error } = await updateQuery.select().maybeSingle();
 
     if (error) {
+      msg("chapterActionMessage", "Gagal menyimpan: " + error.message);
+      if (saveBtn) saveBtn.disabled = false;
+      return;
+    }
 
+    if (!data) {
       msg(
         "chapterActionMessage",
-        "Gagal menyimpan: " +
-        error.message
+        "Konflik versi: bab ini sudah diubah atau dihapus dari perangkat lain. Draf di perangkat ini tidak ditimpa. Salin isi editor, batalkan, lalu muat versi terbaru sebelum menggabungkan perubahan."
       );
-
-      if (saveBtn) {
-        saveBtn.disabled = false;
-      }
-
+      tampilkanInfoSinkronisasi("Penyimpanan diblokir agar edit terbaru tidak tertimpa.", "warning", 0);
+      if (saveBtn) saveBtn.disabled = false;
       return;
     }
 
@@ -2699,8 +3054,14 @@ async function tulisBab() {
 // KARAKTER - PROFIL, EDIT, DAN HAPUS
 // =====================================================
 
+const CHARACTER_SNAPSHOT_FIELDS = [
+  "nama", "umur", "peran", "sifat", "latar_belakang",
+  "hubungan", "tujuan", "rahasia", "catatan"
+];
+
 function resetFormKarakter() {
   editingCharacterId = null;
+  editingCharacterBaseUpdatedAt = null;
 
   [
     "charName", "charAge", "charRole", "charTrait",
@@ -2725,6 +3086,7 @@ function mulaiEditKarakter(characterId) {
   }
 
   editingCharacterId = String(character.id);
+  editingCharacterBaseUpdatedAt = character.updated_at || null;
   const values = {
     charName: character.nama,
     charAge: character.umur,
@@ -2865,19 +3227,33 @@ async function simpanKarakter() {
     hubungan: el("charRelationship")?.value.trim() || "",
     tujuan: el("charGoal")?.value.trim() || "",
     rahasia: el("charSecret")?.value.trim() || "",
-    catatan: el("charNotes")?.value.trim() || ""
+    catatan: el("charNotes")?.value.trim() || "",
+    updated_at: new Date().toISOString()
   };
 
   try {
     let result;
 
     if (editingCharacterId) {
-      result = await supabase
+      let updateQuery = supabase
         .from("novel_karakter")
-        .update(payload)
+        .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("id", editingCharacterId)
         .eq("novel_id", currentNovel.id)
         .eq("user_id", currentUser.id);
+
+      if (editingCharacterBaseUpdatedAt) {
+        updateQuery = updateQuery.eq("updated_at", editingCharacterBaseUpdatedAt);
+      } else {
+        updateQuery = updateQuery.is("updated_at", null);
+      }
+
+      result = await updateQuery.select().maybeSingle();
+      if (!result.error && !result.data) {
+        msg("characterMessage", "Konflik versi: profil ini sudah diubah atau dihapus dari perangkat lain. Perubahan lokal dipertahankan dan belum disimpan. Salin draf, batalkan edit, lalu buka ulang profil terbaru.");
+        tampilkanInfoSinkronisasi("Penyimpanan profil diblokir agar perubahan perangkat lain tidak tertimpa.", "warning", 0);
+        return;
+      }
     } else {
       result = await supabase
         .from("novel_karakter")
@@ -2886,6 +3262,10 @@ async function simpanKarakter() {
 
     if (result.error) {
       msg("characterMessage", `Gagal menyimpan karakter: ${result.error.message}`);
+      return;
+    }
+    if (editingCharacterId && !result.data) {
+      msg("characterMessage", "Profil tidak lagi tersedia. Muat ulang daftar karakter sebelum menyimpan.");
       return;
     }
 
@@ -2977,16 +3357,43 @@ async function simpanStoryBible() {
   });
 
   try {
-    const { data, error } = await supabase
-      .from("novel_story_bible")
-      .upsert(payload, { onConflict: "novel_id,user_id" })
-      .select()
-      .single();
+    let data = null;
+    let error = null;
+
+    if (storyBibleRecord?.id) {
+      let updateQuery = supabase
+        .from("novel_story_bible")
+        .update(payload)
+        .eq("id", storyBibleRecord.id)
+        .eq("novel_id", currentNovel.id)
+        .eq("user_id", currentUser.id);
+
+      if (storyBibleRecord.updated_at) {
+        updateQuery = updateQuery.eq("updated_at", storyBibleRecord.updated_at);
+      } else {
+        updateQuery = updateQuery.is("updated_at", null);
+      }
+
+      ({ data, error } = await updateQuery.select().maybeSingle());
+      if (!error && !data) {
+        msg("storyBibleMessage", "Konflik versi: Story Bible sudah diubah atau dihapus dari perangkat lain. Isian lokal tetap dipertahankan dan belum disimpan. Salin draf lalu muat versi terbaru sebelum menggabungkan perubahan.");
+        tampilkanInfoSinkronisasi("Penyimpanan Story Bible diblokir agar perubahan lain tidak tertimpa.", "warning", 0);
+        return;
+      }
+    } else {
+      // INSERT, bukan upsert: jika perangkat lain membuat dokumen pada saat bersamaan,
+      // constraint unik akan menolak duplikasi tanpa menimpa isi perangkat lain.
+      ({ data, error } = await supabase
+        .from("novel_story_bible")
+        .insert(payload)
+        .select()
+        .single());
+    }
 
     if (error) throw error;
 
     storyBibleRecord = data;
-    msg("storyBibleMessage", "Story Bible berhasil disimpan. Data akan dibaca saat PENA AI menulis bab berikutnya.");
+    msg("storyBibleMessage", "Story Bible berhasil disimpan dan disinkronkan.");
     updateStoryBibleStatus();
   } catch (error) {
     console.error("Gagal menyimpan Story Bible:", error);
@@ -3005,6 +3412,8 @@ function muatGaya() {
   if (!currentNovel) {
     return;
   }
+
+  styleBaseUpdatedAt = currentNovel.updated_at || null;
 
 
   if (el("styleGenre")) {
@@ -3069,60 +3478,38 @@ async function simpanGaya() {
 
   try {
 
-    const {
-      data,
-      error
-    } =
-      await supabase
-        .from("novel")
-        .update({
+    let updateQuery = supabase
+      .from("novel")
+      .update({
+        genre: el("styleGenre")?.value || "Drama",
+        gaya: el("styleWriting")?.value || "Natural",
+        nuansa: el("styleMood")?.value || "Emosional",
+        mode: el("styleMode")?.value || "Normal",
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", currentNovel.id)
+      .eq("user_id", currentUser.id);
 
-          genre:
-            el("styleGenre")?.value ||
-            "Drama",
+    if (styleBaseUpdatedAt) {
+      updateQuery = updateQuery.eq("updated_at", styleBaseUpdatedAt);
+    } else {
+      updateQuery = updateQuery.is("updated_at", null);
+    }
 
-          gaya:
-            el("styleWriting")?.value ||
-            "Natural",
-
-          nuansa:
-            el("styleMood")?.value ||
-            "Emosional",
-
-          mode:
-            el("styleMode")?.value ||
-            "Normal",
-
-          updated_at:
-            new Date().toISOString()
-
-        })
-        .eq(
-          "id",
-          currentNovel.id
-        )
-        .eq(
-          "user_id",
-          currentUser.id
-        )
-        .select()
-        .single();
-
+    const { data, error } = await updateQuery.select().maybeSingle();
 
     if (error) {
-
-      msg(
-        "styleMessage",
-        "Gagal menyimpan gaya: " +
-        error.message
-      );
-
+      msg("styleMessage", "Gagal menyimpan gaya: " + error.message);
+      return;
+    }
+    if (!data) {
+      msg("styleMessage", "Konflik versi: pengaturan novel sudah berubah di perangkat lain. Pilihan lokal belum disimpan. Muat ulang pengaturan terbaru sebelum mencoba lagi.");
+      tampilkanInfoSinkronisasi("Penyimpanan gaya diblokir agar pengaturan perangkat lain tidak tertimpa.", "warning", 0);
       return;
     }
 
-
-    currentNovel =
-      data;
+    currentNovel = data;
+    styleBaseUpdatedAt = data.updated_at || null;
 
 
     if (el("detailInfo")) {
@@ -3514,7 +3901,10 @@ function pasangEvent() {
       simpanKarakter,
 
     cancelCharacterEditBtn:
-      resetFormKarakter,
+      async () => {
+        resetFormKarakter();
+        await muatKarakter();
+      },
 
     saveStoryBibleBtn:
       simpanStoryBible,
